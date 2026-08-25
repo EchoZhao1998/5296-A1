@@ -4,7 +4,7 @@
 attaches this file first; Claude reads it and continues without re-deriving anything. At the
 end of a working session, Claude updates §7 and any section that changed.
 
-**Last updated:** 21 Aug 2026 · Session 1 · by Claude
+**Last updated:** 23 Aug 2026 · Session 2 · by Claude
 
 ---
 
@@ -98,34 +98,80 @@ G6 Wed 9 Sep (dry run) · G7 Thu 10 Sep 18:00 (submit)
 
 ## 4. Verified data facts
 
-All derived by Claude from the actual files on 21 Aug 2026. **Never hard-code these into the
-pipeline** — the spec forbids it and rubric C1/E1 penalise it. They exist to catch mistakes.
+All derived from the actual files, most recently re-verified 23 Aug 2026 by building the six
+tables end to end. **Never hard-code these into the pipeline** — the spec forbids it and rubric
+C1/E1 penalise it. They exist to catch mistakes.
+
+### Counts
 
 | Entity | JSON | XML | Canonical |
 |---|---|---|---|
-| Orders | 2,818 → 2,750 unique | 2,818 → 2,750 unique | 5,000 |
-| Order items | 8,826 → 8,625 | 8,833 → 8,619 | 15,685 |
-| Deliveries | nested, 1/order | nested, 1/order | 5,000 (all orders `Completed`) |
-| Customers | 500 | absent | 500 |
-| Products | absent | 1,000 | 1,000 |
-| Reviews | 3,946 → 3,850 | 3,946 → 3,850 | 7,000 |
+| Orders | 2,818 rows → 2,750 unique | 2,818 → 2,750 | **5,000** |
+| Order items | 8,826 → 8,625 | 8,833 → 8,619 | **15,685** |
+| Deliveries | nested, 1 per order | nested, 1 per order | **5,000** |
+| Customers | 500 | absent | **500** |
+| Products | absent | 1,000 | **1,000** |
+| Reviews | 3,946 → 3,850 | 3,946 → 3,850 | **7,000** |
 
-- **Within-source duplicates:** 68 order IDs, 96 review IDs — same counts in each file, all
-  field-identical to their twin.
-- **Cross-source overlap:** 500 orders, 700 reviews — zero field disagreements after
-  normalisation. No JSON-over-XML precedence rule needed; conflict *detection* still required.
-- **Arithmetic:** recomputing line revenue → order price → tax → total reproduces source values
-  exactly (0 mismatches at 0.01 tolerance).
-- **Source structures:** JSON `{exportMetadata, customerProfiles[500], orders[2818]{header,
-  shoppingCart[], delivery}, productReviews[3946]}` · XML `OperationsExport{Export_Metadata,
-  Orders/Order[2818]{Header, Shopping_Cart/Item[], Delivery}, ProductCatalogue/Product[1000],
-  ProductReviews/Review[3946], WarehouseDirectory/Warehouse[3]}`.
-- **Formats:** XML dates DD/MM/YYYY, booleans Y/N, money `AUD 2,765.47`, percent `10%`;
-  JSON natively typed, ISO dates. Empty coupon → literal `NaN`.
-- `WarehouseDirectory` (3 warehouses, lat/long) maps to no required output field. Useful for
-  EDA distance checks; must not become a column in the six CSVs.
-- `review_title` — checked all 7,892: zero contain markup, markers, URLs or entities, and none
-  contain uppercase. Direct copy is defensible; that count is the evidence.
+Only 500 of the 2,750 order IDs appear in *both* files. Matching row counts are a coincidence,
+not overlap — the two files describe mostly different records.
+
+### Structure and grain
+
+- **JSON** `{exportMetadata, customerProfiles[500], orders[2818]{header, shoppingCart[],
+  delivery}, productReviews[3946]}`
+- **XML** `OperationsExport{Export_Metadata, Orders/Order[2818]{Header, Shopping_Cart/Item[],
+  Delivery}, ProductCatalogue/Product[1000], ProductReviews/Review[3946],
+  WarehouseDirectory/Warehouse[3]}`
+- `order_items` is **1 to 5 rows per order** (median 3). The raw file shows up to 10 because a
+  duplicated order carries a duplicated cart; deduplicate on `order_item_id` first. *(Corrected
+  23 Aug after Jasmine's review — the earlier 1–10 figure was a duplication artefact.)*
+- One delivery per order; every order has one. `order_status` is `Completed` for all 2,818 rows
+  in both files.
+- One review per reviewed order item — 3,850 distinct `review_id` and 3,850 distinct
+  `order_item_id` in each file.
+- `WarehouseDirectory` (3 warehouses, lat/long) maps to no required output field. Useful for an
+  EDA distance figure; must never become a column in the six CSVs.
+
+### Keys and reconciliation
+
+- **Primary keys** are the dictionary's `position = 1` fields. `order_id` was chosen over
+  `source_system_record_id`, which is the same identifier re-encoded — see DEC-016.
+- **Within-source duplicates:** 68 order IDs, 68 delivery IDs, 96 review IDs (identical counts in
+  each file); 201 item IDs in the JSON, 214 in the XML. Every duplicate is exactly two copies and
+  the copies are field-identical.
+- **Cross-source overlap:** 500 orders, 500 deliveries, 1,559 items, 700 reviews. Across all
+  3,259 shared keys and 59 shared columns there are **zero** field disagreements once normalised.
+  No precedence rule needed; conflict *detection* is still required — see DEC-017.
+- **All eight required foreign keys resolve with zero orphans** against the union, and several
+  fail badly against a single file (1,300 JSON review pointers, 499 XML customer pointers).
+
+### Formats and values
+
+- XML: dates `DD/MM/YYYY`, timestamps `DD/MM/YYYY HH:MM:SS`, booleans `Y`/`N`, money
+  `AUD 2,765.47`, percent `10%`, every value arrives as text.
+- JSON: natively typed, ISO dates, `true`/`false`.
+- `coupon_discount` is a **percentage** — values 0, 5, 10, 15, 20, 25. Treating it as a dollar
+  amount breaks 3,906 of 5,000 order totals and every result looks plausible.
+- `coupon_code` is the **only** field with missing values anywhere: 1,767 blank in the JSON,
+  1,770 in the XML. Everything else is fully populated in both files.
+- **Arithmetic verified on all 5,000 canonical orders**: `line_revenue = round(qty × unit_price,
+  2)` 0 mismatches of 15,685; `order_price = round(Σ lines, 2)` 0 of 5,000; `tax_amount =
+  round(price/11, 2)` 0 of 5,000; `order_total = round(price × (1 − d/100) + delivery, 2)` 0
+  outside the 0.01 tolerance. Zero of 5,000 orders match a formula that adds tax again.
+- `review_title` — checked across all 7,000 canonical reviews: no markup, markers, URLs, entities
+  or uppercase, but **479 contain non-ASCII characters** (multilingual titles). Direct copy is
+  correct; it must not be passed through a Latin-only filter.
+- Only **ten** target fields are derived rather than renamed, and all ten are text:
+  `orders.customer_note_clean`, `orders.promo_code`, `products.product_description_clean`, and
+  seven in `product_reviews`.
+
+### Independent build check (23 Aug)
+
+Building all six tables by the documented recipe — parse, normalise, concat,
+`drop_duplicates(key)` — gives 6/6 correct row counts, 6/6 unique non-null primary keys, 8/8
+foreign keys with zero orphans, correct grain on every table, and all five arithmetic identities
+inside tolerance.
 
 ---
 
@@ -195,29 +241,72 @@ Colab, and no absolute personal path survives anywhere in either notebook.
 
 | # | Question | Who decides | By |
 |---|---|---|---|
-| Q1 | `delivery_note_clean` — apply `clean_narrative_text` or direct copy? Source is already clean; only effect is lower-casing. Field name ends `_clean`, which argues for applying it. | Echo + Jasmine | G3 |
-| Q2 | Canonical-row rule for exact duplicates — must be deterministic and documented, even though the choice is arbitrary | Yandu | G4 |
-| Q3 | Whether to rename Drive folder `G1_A1` → `Group001_A1` to remove filename-prefix risk | Echo | G0 |
-> Echo: already renamed, and I have changed the text above.
+| Q5 | Is the master notebook assembled by **pasting** finished sections at each gate, or does each stage owner **append** to the previous owner's file in turn? DEC-020 assumes pasting. Everyone's file layout depends on the answer. | all four | G2 (30 Aug) |
+| Q6 | Does the mapping's `notebook_evidence` column cite a section number (`§1.3d`) or a cell heading? Section numbers are stable under DEC-004 but only if nobody renumbers. | Echo | G1 (27 Aug) |
 
-Every answered question becomes a `DEC-` row in `03_Docs/decision_log.md`.
+**Closed since Session 1:** Q1 → DEC-018 (`delivery_note_clean` is a direct copy, no cleaning) ·
+Q2 → DEC-017 (normalise, then `drop_duplicates(key, keep="first")`) · Q3 → DEC-010 (folder
+renamed) · Q4 → DEC-019 (the latin-analysis and measure fields take the *cleaned* body; the
+specification states this, it was never a judgement call).
+
+Every answered question becomes a `DEC-` row in `Admin/decision_log.md`, which now runs to
+DEC-020 and carries a **Closed** table.
 
 ---
 
 ## 7. Session log
 
-### Session 1 — 20–21 Aug 2026
-Read spec, rubric, data dictionary, both templates, and profiled both raw files.
-Produced: `Group001_A1_Workflow_and_Roles.md` (full plan, definition-of-done per rubric
-criterion, ten HD-losing traps), `Group001_Week1_Brief.md` (group-facing: project in plain
-terms + person/input/output for week 1), `Group001_source_to_target_mapping.csv` (cross-check
-copy, all 111 rows with paths), the Notion panel, and this file.
-Corrected one earlier error: initial section numbering and EDA figure order did not match the
-teaching team's templates. Now aligned to the templates verbatim.
+### Session 2 — 22–23 Aug 2026 · Task 1 built and closed except the mapping
 
-**Next session should:** start Echo's Task 1 — build `wip_echo.ipynb` on the Mac with
-`parse_json()` and `parse_xml()`, then the profiling that evidences §4 above. Priority is
-handing Jasmine a working parser by **Mon 25 Aug**; §1 prose and the mapping columns come after.
+`echo_branch/wip_echo.ipynb` now runs Restart-and-Run-All clean and answers nine of Task 1's ten
+requirements. What was added or changed:
+
+- **§1.1 / §1.2** — primary keys are now read from the data dictionary (`position = 1`) into
+  `DECLARED_KEYS`, and one `profile()` function serves both sources. The two hand-typed
+  `JSON_KEYS` / `XML_KEYS` dicts are gone; there is one definition of "what is the key".
+- **§1.3b** — added a coverage check that compares `NORMALISERS` against every typed dictionary
+  field. It found twelve gaps (all of `products` and `customers`, the two single-source tables).
+  Extension written from the report; the check now returns clean. *(Gap spotted by Jasmine.)*
+- **§1.3c** — candidate-key scan that ranks every column instead of declaring the key, plus a
+  four-question comparison that chose `order_id` over `source_system_record_id`, plus
+  `duplicate_shape()` showing every duplicate is a field-identical pair.
+- **§1.3d** — foreign keys by containment against parent pools, checked against each source and
+  against both pooled; plus the cross-source overlap table that produces the canonical counts.
+- **§1.3e** — shared-record agreement, deliberately run twice to show that comparing before
+  normalising produces 17 columns of fake conflicts and comparing after produces none.
+- **§1.3f** — assumptions register A1–A8, each with its evidence cell and what breaks if wrong.
+- **§1.4** — grain evidenced by rows-per-parent, raw and deduplicated.
+- **§1.5** — Task 1 requirement coverage table. Nine done, one outstanding: the mapping.
+
+Also produced: `echo_branch/Task1_handover.md` (team-facing, one section each for Jasmine, Shawn
+and Yandu) and a key-map page for the group at
+https://claude.ai/code/artifact/5d391b41-46e8-4ea3-b5cb-c515a077779d
+
+Jasmine reviewed on 23 Aug. Three of her four points were correct and are actioned; the fourth (a
+DataFrame not rendering in §1.2) does not reproduce in the current file and may be copy drift —
+worth confirming which file she read.
+
+**Next session: the source-to-target mapping (WP1's remaining deliverable, rubric A2).**
+
+Everything that session needs:
+
+- **Template** `templates/A1_source_to_target_mapping_template.csv` — 111 pre-filled target rows
+  (`mapping_id`, `output_table`, `target_field`) and six columns to complete: `source_format`,
+  `json_source_path`, `xml_source_path`, `transformation_or_derivation`,
+  `overlap_or_conflict_rule`, `notebook_evidence`.
+- **Deliverable** `Group001_source_to_target_mapping.csv`. Opens at G1, closes at G4 (D5).
+- **Rules.** `source_format` is one of `JSON`, `XML`, `both`, `derived`. Multiple input fields are
+  separated with `|`. The mapping describes the *method*, not individual data rows.
+- **Derive first, compare after (D8/DEC-008).** `echo_branch/Group001_source_to_target_mapping(claudeExample).csv`
+  is a pre-filled cross-check, **not** the deliverable. Do not open it until the real rows are
+  written, or A2's traceability claim is hollow.
+- **Where the answers live.** Source paths come from the structure surveys in §1.1 and §1.2;
+  normalisation text from §1.3a and §1.3b; conflict rules from §1.3c–§1.3e (the short version for
+  most rows is "field-identical after normalisation; keep first — DEC-017"); the derived-field
+  inventory from `check_names()`, which is the ten text fields listed in §4 above.
+- **Watch for.** Ten rows are `derived` and belong to Shawn's functions, not to a source path.
+  `source_system_record_id` needs a row of its own even though DEC-016 rejected it as the key.
+  `warehouses` is not an output table and appears nowhere in the mapping.
 
 ---
 
