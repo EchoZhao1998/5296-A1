@@ -4,7 +4,7 @@
 attaches this file first; Claude reads it and continues without re-deriving anything. At the
 end of a working session, Claude updates §7 and any section that changed.
 
-**Last updated:** 23 Aug 2026 · Session 2 · by Claude
+**Last updated:** 25 Aug 2026 · Session 3 · by Claude
 
 ---
 
@@ -38,6 +38,11 @@ Group of four: **Echo · Jasmine · Yandu · Shawn**. Assessment 1, 15% of unit.
 ├── templates/          teaching-team templates, pristine
 └── echo_branch/        ← Echo's own work
     ├── Admin/          spec, rubric, workflow plan, week-1 brief, DRIVE_SCHEMA.rtf
+    ├── wip_echo.ipynb  Task 1, plus §2 mapping paths
+    ├── outputs_wip_echo/                   personal run outputs, incl. the mapping skeleton
+    ├── Group001_mapping_contributions.md   the ask to Jasmine / Shawn / Yandu
+    ├── Group001_mapping_orders_draft.csv   worked example, 23 rows — not the deliverable
+    ├── Group001_mapping_paths.py           path extraction as a standalone file
     └── Group001_source_to_target_mapping(claudeExample).csv   ← cross-check only, DO NOT SUBMIT
 ```
 
@@ -242,7 +247,7 @@ Colab, and no absolute personal path survives anywhere in either notebook.
 | # | Question | Who decides | By |
 |---|---|---|---|
 | Q5 | Is the master notebook assembled by **pasting** finished sections at each gate, or does each stage owner **append** to the previous owner's file in turn? DEC-020 assumes pasting. Everyone's file layout depends on the answer. | all four | G2 (30 Aug) |
-| Q6 | Does the mapping's `notebook_evidence` column cite a section number (`§1.3d`) or a cell heading? Section numbers are stable under DEC-004 but only if nobody renumbers. | Echo | G1 (27 Aug) |
+| Q6 | Does the mapping's `notebook_evidence` column cite a section number (`§1.3d`) or a cell heading? Section numbers are stable under DEC-004 but only if nobody renumbers. **Depends on Q5:** if the master is assembled by pasting, numbering is assigned at paste time and headings are the safer citation. Either way the column cites the *master*, never `wip_echo.ipynb` — a citation into a personal file goes stale silently. | Echo | G1 (27 Aug) |
 
 **Closed since Session 1:** Q1 → DEC-018 (`delivery_note_clean` is a direct copy, no cleaning) ·
 Q2 → DEC-017 (normalise, then `drop_duplicates(key, keep="first")`) · Q3 → DEC-010 (folder
@@ -255,6 +260,58 @@ DEC-020 and carries a **Closed** table.
 ---
 
 ## 7. Session log
+
+### Session 3 — 25 Aug 2026 · Mapping opened: paths derived, skeleton written, team asked
+
+The mapping moved from "not started" to "three of six columns complete for all 111 rows, the other
+three assigned". Nothing was copied from the pre-filled cross-check file; it is still unopened.
+
+- **§2 of `wip_echo.ipynb`** is now written (the stub at the end of the file is filled, 8 cells).
+  Two leaf-path walkers list every place a scalar sits — **86 paths in the JSON, 89 in the XML** —
+  and match them against the dictionary with casing removed, so `orderID` / `Order_ID` / `order_id`
+  resolve to one key. Output: `source_format`, `json_source_path`, `xml_source_path` for all 111
+  rows, written to `outputs_wip_echo/Group001_source_to_target_mapping.csv`.
+- **The grain anchor is the one declared thing.** Name matching alone is wrong: `order_id` occurs in
+  four JSON blocks and `customer_id` in three, so an unanchored run reports `customers.customer_id`
+  and `products.product_id` as `both` — the XML carries a customer *pointer* in every order header,
+  not a customer record. Six lines of `ANCHOR` (which block holds one record per output row) fix it.
+  **Jasmine must confirm this table matches how she builds each grain** — if it doesn't, those path
+  rows are wrong.
+- **Two checks, both passing.** `derived` is not declared anywhere — it is what is left when no
+  field of that name exists at that grain in either file — and it lands on exactly the ten text
+  fields §4 already names, by a completely different route. And the number in each `mapping_id`
+  equals the dictionary's `position`, verified on all 111 rows, so mapping / dictionary / output
+  column order are one ordering rather than three.
+- **Placeholders, not blanks.** The three judgement columns carry `TODO-JASMINE` (101 rows),
+  `TODO-SHAWN` (10), `TODO-YANDU` (111) and `TODO-EVIDENCE` (111), so a half-finished mapping cannot
+  be mistaken for a finished one and each owner filters to their own rows.
+
+Also produced:
+
+- `Group001_mapping_orders_draft.csv` — the 23 `orders` rows written out in full, as a worked
+  example of the level of detail expected. Not the deliverable.
+- `Group001_mapping_contributions.md` — the team-facing ask, one section each for Jasmine, Shawn
+  and Yandu, with row IDs, the two things each row needs (method + section), and gate dates.
+- `Group001_mapping_paths.py` — the same path code as a standalone file.
+- `wip_echo.ipynb.bak` — pre-edit backup, safe to delete once §2 has been run in the notebook.
+
+**Verification.** The four new code cells were executed against the real files outside the notebook
+and all pass; a full Restart-and-Run-All has **not** been done since the edit and is the first thing
+to do next session. No absolute personal path appears anywhere in the notebook.
+
+**Reframing worth keeping.** The mapping is not a separate work package that the four of us
+contribute to. It is a *cross-section* of the four work packages: each of its columns belongs to the
+owner of the stage it describes. That is the reason it opens now and closes at G4 — and the reason
+Echo's G1 deliverable is honestly three columns plus a first pass at evidence, not a filled CSV.
+
+**Next session:**
+
+1. Restart-and-Run-All on `wip_echo.ipynb`, then the same on Colab from a fresh kernel.
+2. Send `Group001_mapping_contributions.md` to the group; get Jasmine's confirmation of `ANCHOR`
+   before G1 rather than after.
+3. Close Q6 at G1, and note that its answer depends on Q5 — see §6.
+
+---
 
 ### Session 2 — 22–23 Aug 2026 · Task 1 built and closed except the mapping
 
