@@ -4,7 +4,7 @@
 attaches this file first; Claude reads it and continues without re-deriving anything. At the
 end of a working session, Claude updates §7 and any section that changed.
 
-**Last updated:** 28 Aug 2026 · Session 4 · by Claude
+**Last updated:** 28 Aug 2026 · Session 5 · by Claude
 
 ---
 
@@ -261,6 +261,51 @@ DEC-020 and carries a **Closed** table.
 
 ## 7. Session log
 
+### Session 5 — 28 Aug 2026 · WP2+WP4 notebook validated; the plan re-cut around EDA
+
+`templates/wip_jasmine_0829.ipynb` — Jasmine's notebook with Shawn's real text functions
+integrated — was walked through cell by cell, executed against the real files outside the
+notebook, and its numbers re-derived independently.
+
+- **The six tables are correct.** Row counts, primary keys, field order, all eight foreign keys
+  and the entire arithmetic chain reproduce exactly, not merely inside tolerance. Formats,
+  sentinels and the absence of helper columns all check out. Every assert in the notebook passes.
+- **One decision is in conflict.** §4.4 now runs `clean_narrative_text` over
+  `delivery_note_clean`, which DEC-018 closed on 23 Aug as a direct copy. The field has two
+  values and no markup, so cleaning it does exactly one thing — lower-case it — and the spec's
+  normalisation list names that. Recommendation: keep DEC-018, which also settles Shawn's list
+  at 10 rows rather than 11. Needs a `DEC-` row either way.
+- **Eight smaller findings**, written up in `Group001_wp1_review_of_wp2_0829.md`: a canonical /
+  per-source number confusion in §4.3 ("497 of 500 customers have orders" — it is 500 of 500),
+  the length and word counts not implementing the sentinel rule, the raw-byte diagnostic still
+  reading backwards, a stale B2 self-check, two monetary roundings bypassing `money_round()`,
+  and four housekeeping items to clear before anything reaches master.
+- **Three answers back to Jasmine.** WP1's path constants need no change. Her regenerated
+  `Group001_mapping_wp2_rows.csv` is byte-identical to the copy already merged. And the
+  `nullable = False` / `'NaN'` question can close as a decision: with the real functions loaded,
+  no such field carries the sentinel anywhere, so both readings agree and the stricter one
+  becomes a check.
+- **The promo cross-check was corroborated a third way**, from raw byte counts rather than from
+  either notebook: 1,048 populated `Coupon_Code` elements in the XML against 1,048 `PROMO:`
+  markers, and 1,051 markers in the JSON.
+
+**The schedule was re-cut** in `Admin/Group001_Week2_Brief.md`. WP2 landed five days early and
+WP4's code is already integrated, so the original chain no longer binds. The constraint is now
+WP3, which has no visible artefact, and EDA, which is 4.5 marks and had not started. EDA moves to
+Monday 31 Aug — the EDA notebook may only read the six CSVs, and those exist and are verified, so
+it never needed to wait for G4. Gates pull forward by one to two days and submission targets
+Wednesday 9 Sep.
+
+**Next session:**
+
+1. Review Shawn's `Group001_text_functions.py` against the nine-step order and the 18 public
+   cases — it is not in this folder yet, and G2 is Saturday.
+2. Close Q1 (write DEC-021), Q5 and Q6. Q6 blocks the mapping's last 111 rows.
+3. Re-issue `Group001_wp1_reply_to_wp2.md` — the file is truncated mid-sentence, and its point 3A
+   is now stale because WP4 landed and that check is real.
+4. Restart-and-Run-All on `wip_echo.ipynb`, locally and on Colab; clear the stored config output.
+5. Send Yandu the 111 overlap rows grouped into stock rules, and start figures 1 and 4.
+
 ### Session 4 — 28 Aug 2026 · WP2's handover merged; the mapping is 101 of 111 written
 
 Jasmine's `wip_jasmine.ipynb` was reviewed end to end and her §2 handover merged into the mapping.
@@ -378,57 +423,7 @@ Echo's G1 deliverable is honestly three columns plus a first pass at evidence, n
 
 ---
 
-### Session 2 — 22–23 Aug 2026 · Task 1 built and closed except the mapping
-
-`echo_branch/wip_echo.ipynb` now runs Restart-and-Run-All clean and answers nine of Task 1's ten
-requirements. What was added or changed:
-
-- **§1.1 / §1.2** — primary keys are now read from the data dictionary (`position = 1`) into
-  `DECLARED_KEYS`, and one `profile()` function serves both sources. The two hand-typed
-  `JSON_KEYS` / `XML_KEYS` dicts are gone; there is one definition of "what is the key".
-- **§1.3b** — added a coverage check that compares `NORMALISERS` against every typed dictionary
-  field. It found twelve gaps (all of `products` and `customers`, the two single-source tables).
-  Extension written from the report; the check now returns clean. *(Gap spotted by Jasmine.)*
-- **§1.3c** — candidate-key scan that ranks every column instead of declaring the key, plus a
-  four-question comparison that chose `order_id` over `source_system_record_id`, plus
-  `duplicate_shape()` showing every duplicate is a field-identical pair.
-- **§1.3d** — foreign keys by containment against parent pools, checked against each source and
-  against both pooled; plus the cross-source overlap table that produces the canonical counts.
-- **§1.3e** — shared-record agreement, deliberately run twice to show that comparing before
-  normalising produces 17 columns of fake conflicts and comparing after produces none.
-- **§1.3f** — assumptions register A1–A8, each with its evidence cell and what breaks if wrong.
-- **§1.4** — grain evidenced by rows-per-parent, raw and deduplicated.
-- **§1.5** — Task 1 requirement coverage table. Nine done, one outstanding: the mapping.
-
-Also produced: `echo_branch/Task1_handover.md` (team-facing, one section each for Jasmine, Shawn
-and Yandu) and a key-map page for the group at
-https://claude.ai/code/artifact/5d391b41-46e8-4ea3-b5cb-c515a077779d
-
-Jasmine reviewed on 23 Aug. Three of her four points were correct and are actioned; the fourth (a
-DataFrame not rendering in §1.2) does not reproduce in the current file and may be copy drift —
-worth confirming which file she read.
-
-**Next session: the source-to-target mapping (WP1's remaining deliverable, rubric A2).**
-
-Everything that session needs:
-
-- **Template** `templates/A1_source_to_target_mapping_template.csv` — 111 pre-filled target rows
-  (`mapping_id`, `output_table`, `target_field`) and six columns to complete: `source_format`,
-  `json_source_path`, `xml_source_path`, `transformation_or_derivation`,
-  `overlap_or_conflict_rule`, `notebook_evidence`.
-- **Deliverable** `Group001_source_to_target_mapping.csv`. Opens at G1, closes at G4 (D5).
-- **Rules.** `source_format` is one of `JSON`, `XML`, `both`, `derived`. Multiple input fields are
-  separated with `|`. The mapping describes the *method*, not individual data rows.
-- **Derive first, compare after (D8/DEC-008).** `echo_branch/Group001_source_to_target_mapping(claudeExample).csv`
-  is a pre-filled cross-check, **not** the deliverable. Do not open it until the real rows are
-  written, or A2's traceability claim is hollow.
-- **Where the answers live.** Source paths come from the structure surveys in §1.1 and §1.2;
-  normalisation text from §1.3a and §1.3b; conflict rules from §1.3c–§1.3e (the short version for
-  most rows is "field-identical after normalisation; keep first — DEC-017"); the derived-field
-  inventory from `check_names()`, which is the ten text fields listed in §4 above.
-- **Watch for.** Ten rows are `derived` and belong to Shawn's functions, not to a source path.
-  `source_system_record_id` needs a row of its own even though DEC-016 rejected it as the key.
-  `warehouses` is not an output table and appears nowhere in the mapping.
+*(Session 2, 22–23 Aug — Task 1 built and closed except the mapping — retired from this log; its decisions are DEC-011 to DEC-020 in `Admin/decision_log.md`.)*
 
 ---
 

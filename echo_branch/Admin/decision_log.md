@@ -57,6 +57,8 @@ version; this table is the register.
 | # | Question | Who decides | By |
 |---|---|---|---|
 | Q5 | Does the master notebook get assembled by pasting sections at each gate, or does each stage owner append to the previous owner's file in turn? DEC-020 assumes pasting. Decide before G2 so nobody builds on the wrong copy. | all four | G2 (30 Aug) |
+| Q1-R | **DEC-018 is contested and Q1 is reopened.** WP2's 29 Aug notebook runs `clean_narrative_text` over `deliveries.delivery_note_clean`; DEC-018 says direct copy. The field holds two values with no markup, so cleaning it only lower-cases it, which the specification's normalisation list names. Settle with a superseding `DEC-` row either way — it also fixes whether WP4 owns 10 mapping rows or 11. | Echo, Jasmine | G2 (30 Aug) |
+| Q6 | Does the mapping's `notebook_evidence` cite a section number or a cell heading? It must cite the master, never a personal notebook. Depends on Q5. Blocks the last 111 mapping rows. | Echo | G2 (30 Aug) |
 
 ## Closed
 
