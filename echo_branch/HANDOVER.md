@@ -4,7 +4,7 @@
 attaches this file first; Claude reads it and continues without re-deriving anything. At the
 end of a working session, Claude updates §7 and any section that changed.
 
-**Last updated:** 25 Aug 2026 · Session 3 · by Claude
+**Last updated:** 28 Aug 2026 · Session 4 · by Claude
 
 ---
 
@@ -260,6 +260,71 @@ DEC-020 and carries a **Closed** table.
 ---
 
 ## 7. Session log
+
+### Session 4 — 28 Aug 2026 · WP2's handover merged; the mapping is 101 of 111 written
+
+Jasmine's `wip_jasmine.ipynb` was reviewed end to end and her §2 handover merged into the mapping.
+Her six tables are correct: 5,000 / 15,685 / 500 / 5,000 / 1,000 / 7,000, PKs unique and complete
+on all six, matching §4 exactly.
+
+- **§2.3 of `wip_echo.ipynb`** (new) fills the source paths for the ten `derived` rows. `derived`
+  means computed rather than copied, not sourceless, and DEC-014 requires the fan-out to be legible
+  in the CSV: `reviewText` / `Review_Text` → 7 `product_reviews` targets, `customerNote` /
+  `Customer_Note` → 2 `orders` targets, `Product_Description` → 1 (XML only). Only the feeder
+  *name* is declared; the paths are looked up through the same index and `ANCHOR` as §2.1, so a
+  moved field blanks the row rather than keeping a stale path.
+- **§2.4** (new) merges `matework/outputs_wip_jasmine/Group001_mapping_wp2_rows.csv` on
+  `(output_table, target_field)` with `validate="one_to_one"`. All 111 pairs matched. Done in code,
+  never as a CSV hand-edit, so re-running either notebook reproduces the file.
+- **The mapping now reads 101 written / 10 `TODO-SHAWN` / 111 `TODO-YANDU` / 111 `TODO-EVIDENCE`.**
+  Deliverable at `outputs_wip_echo/Group001_source_to_target_mapping.csv`; a second working copy
+  `Group001_mapping_working.csv` carries an extra `handover_section` column.
+
+**One classification disagreement, and it was Jasmine's.** She declares an 11-entry `WP4_DERIVED`
+list by hand; §2.1 derives 10 as a residue. Her extra row is `deliveries.delivery_note_clean` —
+which sits at the delivery grain in *both* files and which DEC-018 closed on 23 Aug as a direct
+copy of a two-valued structured category. The consequence was that nobody wrote the row, so WP1
+curated it. The `CURATED` dict is applied last and only over a surviving placeholder, so when she
+corrects her list at G3 her own wording wins and the curation stops firing on its own.
+
+**Jasmine's `notebook_evidence` was parked, not used.** Her `§4.1`–`§4.6` are correct section
+numbers in *her* WIP file. The column must cite the master, and Q6 is still open. Values preserved
+in `handover_section` in the working copy; the deliverable keeps `TODO-EVIDENCE`.
+
+**Two of her cells contradict their own output** — written up in
+`echo_branch/Group001_wp1_reply_to_wp2.md`, to send before G3:
+
+1. VAL-TEXT-13's markdown claims 1,873 rows carry both `coupon_code` and `promo_code` and agree.
+   The cell prints *0 rows carry both* and *1,873 rows where the populated/sentinel pattern
+   differs*. `promo_code` is 100% sentinel until WP4 lands, so the check is **vacuous, not
+   passing**. It becomes real evidence after G2.
+2. The raw byte-count diagnostic is case-sensitive, so four of its five zeros are artefacts.
+   Lower-cased, `promo` appears **1,051 times in the JSON and 1,048 in the XML** — as the `PROMO:`
+   marker inside the customer note — while `promo_code` and `promocode` stay 0 in both. That is a
+   much stronger statement of the point it was reaching for, and gives Shawn an independent
+   expected count (~1,050 markers over 2,818 raw JSON orders) rather than testing his regex
+   against his own pattern.
+
+**Notebook prose rule applied.** No `DEC-`, `Q`, `WP`, `§`-of-another-file or teammate names appear
+in the new markdown or comments — only in the CSV text, where the existing draft already uses them.
+
+**Verification.** All 40 code cells were executed against the real files outside the notebook and
+pass, including the new asserts: 111 rows, column order matches the template, `mapping_id` order
+preserved against the dictionary's positions, no `TODO-JASMINE` left, exactly 10 `TODO-SHAWN` and
+all 10 are `source_format == "derived"`, and no row is pathless. A **Restart-and-Run-All inside the
+notebook is still outstanding**, as is the Colab fresh-kernel run. Backup at `wip_echo.ipynb.bak2`.
+
+**Next session:**
+
+1. Restart-and-Run-All on `wip_echo.ipynb`, then the same on Colab from a fresh kernel.
+2. Send `Group001_wp1_reply_to_wp2.md` to Jasmine; still waiting on her `ANCHOR` confirmation.
+3. Chase Shawn for the 10 `TODO-SHAWN` rows and Yandu for `overlap_or_conflict_rule`.
+4. Close Q6 — it is now the only thing standing between the mapping and its evidence column.
+5. Minor, for G6: the config cell's *stored output* still prints the resolved
+   `/Users/ez_us/...` paths. The code is path-neutral, but the saved output is not, and Appendix A
+   is read by a human. Clear outputs or re-run from a neutral cwd before submission.
+
+---
 
 ### Session 3 — 25 Aug 2026 · Mapping opened: paths derived, skeleton written, team asked
 

@@ -1,0 +1,112 @@
+output_table,target_field,transformation_or_derivation,notebook_evidence
+orders,order_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,source_system_record_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,customer_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,order_timestamp,"Parsed dayfirst for XML and ISO for JSON, held as a Timestamp through §4, emitted as YYYY-MM-DD HH:MM:SS at export (§4.0.1, §7).",§4.1
+orders,sales_channel,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,payment_method,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,currency,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,nearest_warehouse,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,order_status,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,order_price,"Recomputed as round(Σ line_revenue, 2) over the canonical order_items of each order; the source value is not copied. Reconciled at tolerance 0.01 — 0 rows outside (§4.1).",§4.1
+orders,delivery_charges,"Strip the 'AUD' label and thousands separator, cast to float, round to 2dp (§4.0.1 norm_money, §4.0.3 money_round). JSON arrives numeric; one function accepts both spellings.",§4.1
+orders,coupon_code,"Direct copy. Missing is an empty string in the JSON and an empty element in the XML; both become the literal three-character 'NaN' sentinel, filled before any string cast (§4.1).",§4.1
+orders,coupon_discount,"Strip '%' and cast to float. Percentage points, not a fraction — arithmetic divides by 100 (§4.0.1 norm_percent).",§4.1
+orders,tax_amount,"Recomputed as round(order_price / 11, 2), before the coupon discount, and reported separately rather than added to order_total. Reconciled at 0.01 — 0 rows outside (§4.1).",§4.1
+orders,order_total,"Recomputed as round(order_price × (1 − coupon_discount/100) + delivery_charges, 2); coupon_discount is percentage points. Reconciled at 0.01 — 0 rows outside (§4.1).",§4.1
+orders,season,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,expedited_delivery,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.1
+orders,customer_lat,Cast to numeric (§4.0.1).,§4.1
+orders,customer_long,Cast to numeric (§4.0.1).,§4.1
+orders,device_type,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,referral_source,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.1
+orders,customer_note_clean,TODO-SHAWN,§4.1
+orders,promo_code,TODO-SHAWN,§4.1
+order_items,order_item_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.2
+order_items,order_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.2
+order_items,product_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.2
+order_items,quantity,Cast to numeric (§4.0.1).,§4.2
+order_items,unit_price,"Strip the 'AUD' label and thousands separator, cast to float, round to 2dp (§4.0.1 norm_money, §4.0.3 money_round). JSON arrives numeric; one function accepts both spellings.",§4.2
+order_items,line_revenue,"Recomputed as round(quantity × unit_price, 2) from the normalised columns; the source value is not copied. Reconciled against the source at the published tolerance 0.01 — 0 of 15,685 rows outside, max difference 0.0000 (§4.2).",§4.2
+customers,customer_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,signup_date,"Parsed dayfirst for XML and ISO for JSON, held as a Timestamp through §4, emitted as YYYY-MM-DD at export (§4.0.1, §7).",§4.3
+customers,loyalty_tier,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,customer_segment,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,age_band,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,preferred_channel,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,home_suburb,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,prior_12m_orders,Cast to numeric (§4.0.1).,§4.3
+customers,lifetime_value_before_period,"Strip the 'AUD' label and thousands separator, cast to float, round to 2dp (§4.0.1 norm_money, §4.0.3 money_round). JSON arrives numeric; one function accepts both spellings.",§4.3
+customers,marketing_consent,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.3
+customers,home_postcode,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,home_state,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,home_country,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,preferred_language,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,acquisition_source,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,account_status,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,preferred_device,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,email_domain,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,household_size_band,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+customers,contact_frequency_preference,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.3
+deliveries,delivery_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.4
+deliveries,order_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.4
+deliveries,dispatch_date,"Parsed dayfirst for XML and ISO for JSON, held as a Timestamp through §4, emitted as YYYY-MM-DD at export (§4.0.1, §7).",§4.4
+deliveries,promised_date,"Parsed dayfirst for XML and ISO for JSON, held as a Timestamp through §4, emitted as YYYY-MM-DD at export (§4.0.1, §7).",§4.4
+deliveries,delivered_date,"Parsed dayfirst for XML and ISO for JSON, held as a Timestamp through §4, emitted as YYYY-MM-DD at export (§4.0.1, §7).",§4.4
+deliveries,carrier,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.4
+deliveries,service_level,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.4
+deliveries,delivery_status,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.4
+deliveries,delay_days,Cast to numeric (§4.0.1).,§4.4
+deliveries,on_time_in_full,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.4
+deliveries,fulfilment_hours,Cast to numeric (§4.0.1).,§4.4
+deliveries,delivery_cost,"Strip the 'AUD' label and thousands separator, cast to float, round to 2dp (§4.0.1 norm_money, §4.0.3 money_round). JSON arrives numeric; one function accepts both spellings.",§4.4
+deliveries,delay_reason,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.4
+deliveries,promised_days,Cast to numeric (§4.0.1).,§4.4
+deliveries,tracking_event_count,Cast to numeric (§4.0.1).,§4.4
+deliveries,delivery_window,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.4
+deliveries,shipping_distance_km,Cast to numeric (§4.0.1).,§4.4
+deliveries,signature_required,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.4
+deliveries,estimated_carbon_kg,Cast to numeric (§4.0.1).,§4.4
+deliveries,delivery_note_clean,TODO-SHAWN,§4.4
+products,product_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,product_name,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,category,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,brand,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,unit_price,"Strip the 'AUD' label and thousands separator, cast to float, round to 2dp (§4.0.1 norm_money, §4.0.3 money_round). JSON arrives numeric; one function accepts both spellings.",§4.5
+products,unit_cost,"Strip the 'AUD' label and thousands separator, cast to float, round to 2dp (§4.0.1 norm_money, §4.0.3 money_round). JSON arrives numeric; one function accepts both spellings.",§4.5
+products,launch_year,Cast to numeric (§4.0.1).,§4.5
+products,warranty_months,Cast to numeric (§4.0.1).,§4.5
+products,weight_kg,Cast to numeric (§4.0.1).,§4.5
+products,product_sku,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,subcategory,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,model_family,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,colour,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,supplier_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,supplier_country,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,launch_date,"Parsed dayfirst for XML and ISO for JSON, held as a Timestamp through §4, emitted as YYYY-MM-DD at export (§4.0.1, §7).",§4.5
+products,tax_category,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,package_type,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
+products,recyclable_packaging,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.5
+products,active_flag,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.5
+products,product_description_clean,TODO-SHAWN,§4.5
+product_reviews,review_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,order_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,order_item_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,product_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,customer_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,review_timestamp,"Parsed dayfirst for XML and ISO for JSON, held as a Timestamp through §4, emitted as YYYY-MM-DD HH:MM:SS at export (§4.0.1, §7).",§4.6
+product_reviews,language_code,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,rating,Cast to numeric (§4.0.1).,§4.6
+product_reviews,review_title,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,review_body_clean,TODO-SHAWN,§4.6
+product_reviews,review_body_latin_analysis,TODO-SHAWN,§4.6
+product_reviews,verified_purchase,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.6
+product_reviews,helpful_votes,Cast to numeric (§4.0.1).,§4.6
+product_reviews,review_length_chars,TODO-SHAWN,§4.6
+product_reviews,review_word_count,TODO-SHAWN,§4.6
+product_reviews,contains_non_latin_script,TODO-SHAWN,§4.6
+product_reviews,extracted_order_reference,TODO-SHAWN,§4.6
+product_reviews,extracted_product_sku,TODO-SHAWN,§4.6
+product_reviews,delivery_experience,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,value_experience,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
+product_reviews,writing_style,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.6
