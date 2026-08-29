@@ -52,12 +52,21 @@ version; this table is the register.
 
 ---
 
+## Decisions settled 29 Aug 2026
+
+| ID | Date | Decision | Why | Decided by | Affects |
+|---|---|---|---|---|---|
+| DEC-021 | 29 Aug | **Q1 re-examined; DEC-018 stands.** `deliveries.delivery_note_clean` is a direct copy. It does **not** pass through `clean_narrative_text`, and its values keep their source case — `Carrier scan reconciled` (528) and `Delivered within promise` (4,472). The field is therefore a **WP2 mapping row, and WP4 owns ten rows, not eleven.** *(closes Q1-R)* | Re-opened when WP2's 29 Aug notebook cleaned the field. Three things settle it. (1) With the real text functions loaded, lower-casing is the **only** effect cleaning has on this field — across all 5,000 canonical deliveries it holds two values with no tags, markers, URLs, entities or non-ASCII. The specification's normalisation list says not to lower-case identifiers or structured categories unless a field-specific rule requires it, and no published rule designates this field. (2) The specification never enumerates which target fields are narrative — it defines `clean_narrative_text` and refers to "raw narrative fields" — so the classification must come from the values, not the field names. `customer_note`, `product_description` and `review_body` carry `[SYSTEM]`, `[CATALOGUE]`, tags and URLs and are narrative by evidence; this field is not. (3) The `_clean` suffix is the source system's own field name (`deliveryNoteClean` / `Delivery_Note_Clean`); reading an instruction out of a name is what WP2's own rule "source spelling is not a contract fact" warns against. WP2's §3 markdown already states ten text-derived fields and lists `deliveries` as free of any text dependency, so this makes that notebook self-consistent. | Echo, Jasmine | B2, B3, A2, §4.4, WP2↔WP4 boundary |
+| DEC-022 | 29 Aug | **A run using the WP4 placeholders must not write the six CSVs**, or must write them to a clearly separate `provisional/` folder. | On 29 Aug a placeholder run overwrote the shared export folder. The notebook was honest — the banner fired and the all-sentinel guard reported `WP4 placeholders in use: True` — but the **exported CSVs carry no marker**, so a consumer picking them up cannot tell. The files held `[SYSTEM]`-laden `customer_note_clean`, uncleaned review bodies and `promo_code` empty on all 5,000 rows. Downstream this would have produced a validation register written against uncleaned text and three dead columns. Extends the reasoning behind DEC-009 from the shared folder to the placeholder state. | Echo, Jasmine | E1, E2, WP2→WP3 handover |
+| DEC-023 | 29 Aug | **A `DEC-` row is reversed by proposal, not by code.** Anyone may reopen a settled decision at any time; the reversal takes effect when a superseding row is written, not when a notebook ships the other behaviour. | Reopening DEC-018 was correct and the evidence was worth having. But for a day the register and the pipeline disagreed, and nobody downstream could tell which was authoritative. The cost of the norm is one message; the cost of skipping it is that the mapping, the notebook and the log can each be individually defensible and collectively wrong. | all four | process, decision log |
+
+---
+
 ## Still open
 
 | # | Question | Who decides | By |
 |---|---|---|---|
 | Q5 | Does the master notebook get assembled by pasting sections at each gate, or does each stage owner append to the previous owner's file in turn? DEC-020 assumes pasting. Decide before G2 so nobody builds on the wrong copy. | all four | G2 (30 Aug) |
-| Q1-R | **DEC-018 is contested and Q1 is reopened.** WP2's 29 Aug notebook runs `clean_narrative_text` over `deliveries.delivery_note_clean`; DEC-018 says direct copy. The field holds two values with no markup, so cleaning it only lower-cases it, which the specification's normalisation list names. Settle with a superseding `DEC-` row either way — it also fixes whether WP4 owns 10 mapping rows or 11. | Echo, Jasmine | G2 (30 Aug) |
 | Q6 | Does the mapping's `notebook_evidence` cite a section number or a cell heading? It must cite the master, never a personal notebook. Depends on Q5. Blocks the last 111 mapping rows. | Echo | G2 (30 Aug) |
 
 ## Closed
@@ -67,3 +76,4 @@ version; this table is the register.
 | Q1 | `delivery_note_clean` — clean or direct copy? | DEC-018 (direct copy) |
 | Q2 | Canonical-row rule for exact duplicates | DEC-017 (normalise, then keep first) |
 | Q4 | Does `build_latin_analysis` take raw or cleaned text? | DEC-019 (cleaned — stated in the spec) |
+| Q1-R | `delivery_note_clean` re-opened 29 Aug — cleaned or copied? | DEC-021 (DEC-018 stands: direct copy, source case kept) |

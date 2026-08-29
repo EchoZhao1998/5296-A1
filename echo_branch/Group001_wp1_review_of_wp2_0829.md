@@ -41,7 +41,9 @@ code and WP4's.
 
 ---
 
-## 1 · `delivery_note_clean` — needs a group decision, not a preference
+## 1 · `delivery_note_clean` — **settled 29 Aug as DEC-021: direct copy, source case kept**
+
+*(The analysis below is the record of how it was decided. WP4's list is 10 rows.)*
 
 §4.4 now runs `clean_narrative_text` on this field. DEC-018 (23 Aug) says it is a direct copy.
 One of the two has to be withdrawn.

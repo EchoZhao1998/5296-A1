@@ -296,6 +296,70 @@ Monday 31 Aug — the EDA notebook may only read the six CSVs, and those exist a
 it never needed to wait for G4. Gates pull forward by one to two days and submission targets
 Wednesday 9 Sep.
 
+**Q1 closed as DEC-021: `delivery_note_clean` is a direct copy, source case kept.** DEC-018 stands.
+The deciding evidence: with the real text functions loaded, lower-casing is the *only* effect
+cleaning has on this field, and the specification's normalisation list names lower-casing structured
+categories directly. Two supporting arguments — the specification never enumerates which fields are
+narrative, so the classification has to come from the values rather than the `_clean` suffix; and
+WP2's own §3 markdown already says ten text-derived fields and lists `deliveries` as carrying none.
+**WP4's mapping list is 10 rows.** Two process decisions were written alongside it: DEC-022 (a
+placeholder run must not write the six CSVs) and DEC-023 (a `DEC-` row is reversed by proposal, not
+by shipping code).
+
+**A placeholder run overwrote the exported CSVs, and this was nearly missed.** The copy of WP2's
+notebook in `templates/` changed mid-session and its stored outputs are now from a run where the
+text module was not found — banner fired, guard reported `WP4 placeholders in use: True`. The six
+CSVs synced at 00:36 match it: `customer_note_clean` still carries `[SYSTEM]`, tags and a URL,
+review bodies are uncleaned, `promo_code` is empty on all 5,000 rows. The notebook was honest; the
+*files* carry no marker, which is the whole problem, and WP3 was about to start against them. This
+is what DEC-022 exists to prevent. **Note for future sessions: verify which run produced a CSV
+before trusting it — check `customer_note_clean` for `[SYSTEM]` and `promo_code` for a populated
+count.** The row counts, keys, foreign keys and arithmetic verified this session are unaffected;
+none of them depend on WP4.
+
+**`NORMALISERS` corrected in `wip_echo.ipynb`, and the map now has a second route.** WP2's review
+was right that the map merged `date` and `datetime` into one bucket. It produced no wrong answer
+where it sat — the map only feeds the cross-source comparison, and both sides parse identically, so
+the before/after conflict table is unchanged (0 conflicts on all four shared tables either way).
+But the cell's own comment invited reuse for output, and there the merge would append a zero time
+to five fields. Three edits: the bucket split in the definition cell and the extension cell, and one
+branch in `normalise()` that accepts either category. `normaliser_gaps()` needed nothing — it
+iterates the map's values, so it is key-agnostic.
+
+WP2's derived plan was **not** adopted wholesale, deliberately: deriving the map from the dictionary
+would make the coverage check compare the dictionary against itself, and that check is what found
+the twelve `products` / `customers` gaps in the first place. Instead a new cell keeps the
+hand-written map and asserts it equals the dictionary-derived plan — two independent routes, checked
+rather than claimed. It passes on all six tables, and the percent category is declared with the
+reason stated, since source spelling cannot come from the contract.
+
+**Restart-and-Run-All was executed on the edited file**: 42 code cells, 0 errors, gap check still
+reports 12 before the extension and 0 real gaps after. Backup at `wip_echo.ipynb.bak3`. The new
+cell is left unexecuted so no run of it stores a personal path; the Colab fresh-kernel run is still
+outstanding.
+
+**Shawn's and Yandu's notebooks were reviewed too** (`Group001_wp1_review_of_g0_shawn_yandu.md`).
+Both are the **G0 warm-up, not the WP3/WP4 deliverables**. Both are correct — 5,000 / 68 / 500,
+re-derived independently, both run clean, both close with the inclusion–exclusion check. Shawn
+used BeautifulSoup over lxml and Yandu used `xml.etree`, so with WP1's and WP2's routes that is
+four independent confirmations of the same numbers.
+
+New fact for the group: the 68 duplicated order IDs in the JSON and the 68 in the XML have **zero
+overlap** — no ID is duplicated in both files. The matching count is a generation artefact, not
+the same records repeating, and a check built on the assumption would falsely pass. Every
+duplicate is exactly a pair (maximum multiplicity 2 in both files), which is why "distinct IDs
+appearing twice" and "rows removed" both give 68.
+
+Smaller notes: Shawn's `bs4` route is fine as a cross-check but must not enter the master (§1 is
+one shared parser, and it would add a declarable dependency); his Drive path is personal and
+absolute and his `GROUP_ID` is `"001"` rather than `"Group001"`. Yandu's `_resolve()` falls back
+to `rglob` and returns the first match, which can silently read a stale copy; neither notebook
+asserts `groupAlias`.
+
+**The real finding is what is absent.** Shawn's `Group001_text_functions.py` and its test evidence
+are still not in this folder with G2 tomorrow, and Yandu has nothing past G0 — no register
+specification, which the week-1 brief wanted on 27 Aug.
+
 **Next session:**
 
 1. Review Shawn's `Group001_text_functions.py` against the nine-step order and the 18 public

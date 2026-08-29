@@ -1,6 +1,6 @@
 # A1 — Week 2: where we actually are, and what changes
 
-Echo · 28 Aug 2026 · for Jasmine, Yandu, Shawn · 13 days to the deadline
+Echo · 29 Aug 2026 · for Jasmine, Yandu, Shawn · 12 days to the deadline
 
 ---
 
@@ -11,13 +11,13 @@ chain has broken in our favour at the front and is now sagging at the back.
 
 | Gate | Planned | Where it actually is |
 |---|---|---|
-| G0 shared fact base | Sat 23 Aug | done |
-| G1 parse & map | Wed 27 Aug | §1 done. Mapping has source format, both path columns and 101 of 111 derivation rows. Two columns are still placeholders by design — they close at G4. Not signed off. |
-| G2 text pipeline | Sat 30 Aug | the code landed early and is already integrated. What is *not* done is the evidence — 18 public cases plus 12 of our own, shown — and my review of it. |
-| G3 six tables | Wed 3 Sep | **done, five days early, and independently re-checked today.** Row counts, keys, field order, all eight foreign keys and the whole arithmetic chain reproduce exactly. |
-| G4 reconciliation & validation | Sat 6 Sep | **nothing visible yet.** Two decisions Yandu owed have been made by WP2 in the meantime. This is now the critical path. |
-| G5 EDA | Tue 8 Sep | not started. 4.5 of the 15 marks. |
-| G6 dry run / G7 submit | Wed 9 / Thu 10 Sep | untouched |
+| G0 shared fact base | 23 Aug | done |
+| G1 parse & map | 27 Aug | §1 done. Mapping has source format, both path columns and 101 of 111 derivation rows. Two columns are still placeholders by design — they close at G4. Not signed off. |
+| G2 text pipeline | 30 Aug | the code landed early and is already integrated. What is *not* done is the evidence — 18 public cases plus 12 of our own, shown — and my review of it. |
+| G3 six tables | 3 Sep | **done, five days early, and independently re-checked today.** Row counts, keys, field order, all eight foreign keys and the whole arithmetic chain reproduce exactly. |
+| G4 reconciliation & validation | 6 Sep | **nothing visible yet.** Two decisions Yandu owed have been made by WP2 in the meantime. This is now the critical path. |
+| G5 EDA | 8 Sep | not started. 4.5 of the 15 marks. |
+| G6 dry run / G7 submit | 9 / 10 Sep | untouched |
 
 **The one structural change.** EDA was scheduled after validation because it seemed to depend on
 it. It does not. The EDA notebook is only permitted to read the six exported CSVs, and those
@@ -31,19 +31,24 @@ and a start date, both below.
 
 ---
 
+> **Weekday labels in the week-1 plan are one day out.** Checked against a calendar: 23 Aug is a
+> Sunday, 27 Aug and 3 Sep are Thursdays, 30 Aug and 6 Sep are Sundays. The *dates* were right and
+> the deadline — Thursday 10 September — is right. Anyone scheduling by day name rather than date
+> should re-check. Dates in this document are the ones that count.
+
 ## Part 2 — Revised gates
 
 Everything moves one to two days earlier, and the submission target moves to Wednesday.
 
 | Gate | New date | What must exist | Owner | Signed by |
 |---|---|---|---|---|
-| **G2 text pipeline** | Sat 30 Aug | all 18 public cases shown passing, plus ≥12 of our own edge cases. Functions importable, no file I/O. Three open questions closed (below). | Shawn | Echo |
-| **G3 six tables** | **Mon 1 Sep** *(was Wed 3)* | the six CSVs, re-run clean after the `delivery_note_clean` decision. Consumer review, not a courtesy read. | Jasmine | Yandu |
-| **G4 reconciliation & validation** | **Thu 4 Sep** *(was Sat 6)* | validation register with stable `VAL-` IDs, observed results, pass/fail, interpretation. §5 reconciliation. Mapping's overlap column filled — all 111 rows. | Yandu | Jasmine |
-| **G5 EDA** | **Mon 7 Sep** *(was Tue 8)* | 8 figures, each with question, observation unit, denominator, tables and join keys, interpretation, limitation. Join-multiplication check shown. | all four | round-robin |
+| **G2 text pipeline** | Sun 30 Aug | all 18 public cases shown passing, plus ≥12 of our own edge cases. Functions importable, no file I/O. Three open questions closed (below). | Shawn | Echo |
+| **G3 six tables** | **Tue 1 Sep** *(was 3 Sep)* | the six CSVs, re-run clean after the `delivery_note_clean` decision. Consumer review, not a courtesy read. | Jasmine | Yandu |
+| **G4 reconciliation & validation** | **Fri 4 Sep** *(was 6 Sep)* | validation register with stable `VAL-` IDs, observed results, pass/fail, interpretation. §5 reconciliation. Mapping's overlap column filled — all 111 rows. | Yandu | Jasmine |
+| **G5 EDA** | **Mon 7 Sep** *(was 8 Sep)* | 8 figures, each with question, observation unit, denominator, tables and join keys, interpretation, limitation. Join-multiplication check shown. | all four | round-robin |
 | **Report draft** | **Mon 7 Sep** | 10 findings and 5 ML questions drafted, one editor passes over all of them | all four → one editor | all |
-| **G6 dry run** | **Tue 8 Sep** *(was Wed 9)* | zip built, unzipped into an empty folder, both notebooks re-run from there. AI records complete. | Echo | all |
-| **G7 submit** | **Wed 9 Sep, 18:00** *(was Thu 10)* | uploaded, four Moodle receipts checked | Echo | all |
+| **G6 dry run** | **Tue 8 Sep** *(was 9 Sep)* | zip built, unzipped into an empty folder, both notebooks re-run from there. AI records complete. | Echo | all |
+| **G7 submit** | **Wed 9 Sep, 18:00** *(was 10 Sep)* | uploaded, four Moodle receipts checked | Echo | all |
 
 A day of real buffer before a 23:55 Thursday deadline is worth more than a day of polish.
 
@@ -72,8 +77,8 @@ behind each one.
 
 | | |
 |---|---|
-| **By Sat 30** | the test evidence, not just the code: 18 public cases shown, ≥12 of our own. Watch the case where the removable marker list is closed — a generic bracket regex passes 17 and fails that one. |
-| **By Mon 1** | your 10 (or 11) mapping rows: `transformation_or_derivation` and `notebook_evidence`, describing what the functions actually do. Send to me. |
+| **By Sun 30 Aug** | the test evidence, not just the code: 18 public cases shown, ≥12 of our own. Watch the case where the removable marker list is closed — a generic bracket regex passes 17 and fails that one. |
+| **By Tue 1 Sep** | your 10 (or 11) mapping rows: `transformation_or_derivation` and `notebook_evidence`, describing what the functions actually do. Send to me. |
 | **Then** | figures 6 and 8 — deliveries × orders, and deliveries × customer segment. |
 
 The coupon cross-check is the strongest evidence you have and it is worth citing in both your
@@ -85,9 +90,9 @@ tests your output against your own pattern; this one does not.
 
 | | |
 |---|---|
-| **By Mon 1** | consume the six tables as a reviewer: re-run them from a fresh kernel and try to break them. This is G3's signature. |
-| **By Thu 4** | the validation register, executable, with the `VAL-` prefixes the template prescribes. |
-| **By Thu 4** | the mapping's `overlap_or_conflict_rule` for all 111 rows. I will send it grouped — most rows take one of four stock sentences, so it is an hour, not a day. |
+| **By Tue 1 Sep** | consume the six tables as a reviewer: re-run them from a fresh kernel and try to break them. This is G3's signature. |
+| **By Fri 4 Sep** | the validation register, executable, with the `VAL-` prefixes the template prescribes. |
+| **By Fri 4 Sep** | the mapping's `overlap_or_conflict_rule` for all 111 rows. I will send it grouped — most rows take one of four stock sentences, so it is an hour, not a day. |
 | **Then** | figures 5 and 7 — reviews, and reviews × products. |
 
 Four things to save you time, already established: write tolerances as `<=` 0.01 and not `<`;
@@ -100,9 +105,9 @@ mismatches; `delay_reason == 'none'` is a real category on 4,472 rows, not a mis
 
 | | |
 |---|---|
-| **By Mon 1** | re-run after the `delivery_note_clean` decision, plus the corrections in my review note |
-| **From Mon 31** | figures 2 and 3 — orders × customers, and orders × customers × order_items |
-| **By Sat 5** | both figures drafted with their question, denominator and join check |
+| **By Tue 1 Sep** | re-run after the `delivery_note_clean` decision, plus the corrections in my review note |
+| **From Mon 31 Aug** | figures 2 and 3 — orders × customers, and orders × customers × order_items |
+| **By Sat 5 Sep** | both figures drafted with their question, denominator and join check |
 
 Your tables are the input everyone else now works from, so the useful thing is not more table
 work — it is being the person who answers questions about them quickly this week.
@@ -111,11 +116,11 @@ work — it is being the person who answers questions about them quickly this we
 
 | | |
 |---|---|
-| **By Sat 30** | review Shawn's functions against the specification's nine-step order and the public cases; close the three questions above |
-| **By Sat 30** | fresh-kernel run of my notebook locally and on Colab; clear the stored output that prints a personal path |
-| **From Mon 31** | figures 1 and 4 — orders, and orders × deliveries |
-| **By Thu 4** | mapping evidence column, once the assembly question is settled |
-| **From Sat 5** | assemble the master notebook; take the report editor role unless someone else wants it |
+| **By Sun 30 Aug** | review Shawn's functions against the specification's nine-step order and the public cases; close the three questions above |
+| **By Sun 30 Aug** | fresh-kernel run of my notebook locally and on Colab; clear the stored output that prints a personal path |
+| **From Mon 31 Aug** | figures 1 and 4 — orders, and orders × deliveries |
+| **By Fri 4 Sep** | mapping evidence column, once the assembly question is settled |
+| **From Sat 5 Sep** | assemble the master notebook; take the report editor role unless someone else wants it |
 
 ---
 
