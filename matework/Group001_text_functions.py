@@ -1,3 +1,7 @@
+# Fix (29 Aug 2026):
+# Added NFC normalisation after HTML entity decoding.
+# Narrowed Unicode filtering from all S* categories to So only
+
 import re
 import html
 import unicodedata
@@ -29,6 +33,7 @@ def clean_narrative_text(value):
 
     # decode html
     text = html.unescape(value)
+    text = unicodedata.normalize("NFC", text)
 
     # remove part in <tag>
     text = re.sub(r"<[^>]*>",                                                                   " ", text) 
@@ -44,8 +49,9 @@ def clean_narrative_text(value):
     text = re.sub(r"\bSKU:\s*SKU-[A-Z0-9]+\b",                                                  " ", text, flags=re.IGNORECASE)
     # remove #verified-buyer @store_support
     text = re.sub(r"(?:#verified-buyer|@store_support)\b",                                      " ", text, flags=re.IGNORECASE)
-    # remove Unicode char
-    text = "".join(char for char in text if not unicodedata.category(char).startswith("S"))
+
+    # remove Unicode emoji but will keep others like $+=
+    text = "".join(char for char in text if unicodedata.category(char) != "So")
 
     text = " ".join(text.lower().split())
     return text or NAN
