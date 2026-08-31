@@ -67,7 +67,7 @@ deliveries,delivery_window,Direct copy after deduplication. No case change; iden
 deliveries,shipping_distance_km,Cast to numeric (§4.0.1).,§4.4
 deliveries,signature_required,XML 'Y'/'N' and JSON native bool both become Python bool (§4.0.1 norm_bool).,§4.4
 deliveries,estimated_carbon_kg,Cast to numeric (§4.0.1).,§4.4
-deliveries,delivery_note_clean,TODO-SHAWN,§4.4
+deliveries,delivery_note_clean,"('Direct copy from the source column of the same name. Not cleaned: the field holds two structured values and clean_narrative_text alters all 5,000 rows by letter case alone, which would corrupt a categorical (DEC-018).', '§4.4')",§4.4
 products,product_id,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
 products,product_name,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
 products,category,Direct copy after deduplication. No case change; identifier padding preserved (dtype held as string through export).,§4.5
