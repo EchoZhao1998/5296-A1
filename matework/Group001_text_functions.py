@@ -2,6 +2,10 @@
 # Added NFC normalisation after HTML entity decoding.
 # Narrowed Unicode filtering from all S* categories to So only
 
+# Fix (31 Aug 2026):
+# Unified boundary handling across all three reference extractors.
+# Rejected non-ASCII look-alikes and malformed Unicode extensions.
+
 import re
 import html
 import unicodedata
@@ -57,6 +61,38 @@ def clean_narrative_text(value):
     return text or NAN
 
 
+def _extract_reference(value, pattern):
+    """Extract one bounded ASCII reference and return it in upper case.
+    提取一个边界完整的 ASCII 编号，并以大写形式返回。
+    Args / 参数:
+        value (object): Raw narrative value. 原始叙述文本值。
+        pattern (str): Regex for the reference format. 编号格式正则。
+    Returns / 返回:
+        str: Upper-case reference, or literal "NaN" when invalid or absent.
+             大写编号；格式无效或不存在时返回字面量 "NaN"。
+    """
+    if _missing(value):
+        return NAN
+
+    # No letter, digit, underscore or hyphen may touch either end.
+    # 编号两端不能紧邻字母、数字、下划线或连字符。
+    match = re.search(
+        r"(?<![\w-])" + pattern + r"(?![\w-])",
+        value,
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return NAN
+
+    # Published reference formats are ASCII; reject Unicode look-alikes.
+    # 规定的编号格式仅限 ASCII，拒绝其他文字系统中的相似字符。
+    token = match.group(0)
+    if not token.isascii():
+        return NAN
+
+    return token.upper()
+
+
 def extract_order_reference(value):
     """Extract a valid HORD/CORD order reference from raw text.
     从原始文本中提取有效的 HORD/CORD 订单编号。
@@ -66,16 +102,7 @@ def extract_order_reference(value):
         str: Upper-case order reference, or literal "NaN" when absent.
              大写订单编号；不存在时返回字面量 "NaN"。
     """
-    if _missing(value):
-        return NAN
-
-    # Match a standalone HORD/CORD followed by exactly six digits.
-    match = re.search(
-        r"(?<![A-Z0-9])[HC]ORD\d{6}(?![A-Z0-9])",
-        value,
-        flags=re.IGNORECASE,
-    )
-    return match.group(0).upper() if match else NAN
+    return _extract_reference(value, r"[HC]ORD\d{6}")
 
 
 def extract_product_sku(value):
@@ -87,17 +114,7 @@ def extract_product_sku(value):
         str: Upper-case product SKU, or literal "NaN" when absent.
              大写产品 SKU 不存在时返回字面量 "NaN"。
     """
-    if _missing(value):
-        return NAN
-
-    # Match a standalone SKU- followed by letters or digits; reject extensions.
-    # 匹配独立的 SKU-及其后的字母或数字，并拒绝额外扩展。
-    match = re.search(
-        r"(?<![A-Z0-9_-])SKU-[A-Z0-9]+(?![A-Z0-9_-])",
-        value,
-        flags=re.IGNORECASE,
-    )
-    return match.group(0).upper() if match else NAN
+    return _extract_reference(value, r"SKU-[A-Z0-9]+")
 
 
 def extract_promo_code(value):
@@ -112,17 +129,7 @@ def extract_promo_code(value):
         str: Upper-case promotion code, or literal "NaN" when absent.
              大写促销码；不存在时返回字面量 "NaN"。
     """
-    if _missing(value):
-        return NAN
-
-    # Match a standalone B1-B5 SAVE code followed by exactly two digits.
-    # 匹配独立的 B1-B5 SAVE 促销码及其后的两位数字。
-    match = re.search(
-        r"(?<![A-Z0-9_-])B[1-5]SAVE-\d{2}(?![A-Z0-9_-])",
-        value,
-        flags=re.IGNORECASE,
-    )
-    return match.group(0).upper() if match else NAN
+    return _extract_reference(value, r"B[1-5]SAVE-\d{2}")
 
 def build_latin_analysis(value):
     """Build a Latin-script analysis value from cleaned narrative text.
