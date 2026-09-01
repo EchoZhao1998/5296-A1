@@ -61,13 +61,26 @@ version; this table is the register.
 | DEC-023 | 29 Aug | **A `DEC-` row is reversed by proposal, not by code.** Anyone may reopen a settled decision at any time; the reversal takes effect when a superseding row is written, not when a notebook ships the other behaviour. | Reopening DEC-018 was correct and the evidence was worth having. But for a day the register and the pipeline disagreed, and nobody downstream could tell which was authoritative. The cost of the norm is one message; the cost of skipping it is that the mapping, the notebook and the log can each be individually defensible and collectively wrong. | all four | process, decision log |
 
 ---
+---
+
+## Decisions settled 1 Sep 2026
+
+| ID | Date | Decision | Why | Decided by | Affects |
+|---|---|---|---|---|---|
+| DEC-024 | 1 Sep | **Tasks 1–4 are frozen after the 1 Sep patch window.** WP1, WP2, WP3 and WP4 take no further change unless a defect is found that changes an exported value. Diagnostics, wording and tidying are out of scope from this point. | Nine days remain and 4.5 of the 15 marks (F1, F2, F3, G1) have nothing built, while the first four tasks are verified: the six CSVs reproduce byte for byte from a fresh kernel, the register runs 65 PASS, and the text functions pass every public and own test. Continuing to improve finished work is the most expensive thing we could do with the remaining time, and each improvement re-opens the reproducibility check that has already passed. | all four | schedule, E2, F, G |
+| DEC-025 | 1 Sep | **The master notebook is assembled by pasting finished sections, once, by Echo** — WP1 §0–§2, then WP2 §3–§4 and §7, then WP3 §6. Nobody else edits the assembled file. *(closes Q5)* | DEC-020 already assumed pasting when it made Section 1 read-only. Appending in turn would mean four people editing one file across a week with no way to review a section in isolation, and the cross-source conflict detector has to be wired into the pre-deduplication frame at one point in one file, which is an assembly step by definition. | all four | assembly, C1, C2, E2 |
+| DEC-026 | 1 Sep | **`notebook_evidence` cites the master notebook's section numbers**, assigned at assembly and filled in one pass immediately afterwards. *(closes Q6)* | The question was never really a preference between numbers and headings — it was that section numbers did not exist yet, because they are only fixed once the master is assembled. DEC-004 already commits us to the teaching team's template numbering verbatim, so after assembly the numbers are stable, and a section number is shorter and more checkable than a heading string. Ordering assembly before the evidence pass turns a four-session open question into a six-entry lookup. The column continues to cite the master only, never a personal WIP file. | Echo | A2, the 111-row mapping |
+
+| DEC-027 | 1 Sep | **Tasks 1-4 are assembled and closed.** `00_Master/Group001_solution.ipynb` is the single authoritative workflow: WP1 Sections 0-2, WP4 Section 3, WP2 Section 4 and 7, WP3 Sections 5-6. The three WIP notebooks are frozen evidence and are no longer edited. | Restart-and-Run-All from a fresh kernel completes with zero errors in ~40 s and writes all eight files; the six exported CSVs are byte-identical (sha256) to the set already validated, so nothing downstream re-runs. 68 validation checks, all PASS, none deferred. Small defects were fixed in the assembled copy rather than sent back to their owners, because everyone has other assessments and a round trip costs more than it corrects. | Echo | A1, A2, B, C, D, E |
+| DEC-028 | 1 Sep | **The mapping's two judgement columns are written as general rules, looked up per row, not as 111 individual sentences.** `transformation_or_derivation` takes one of four shapes chosen from the dictionary's `data_type` and `comparison_rule`; `overlap_or_conflict_rule` takes one of three shapes chosen from which files supply the table. | The rule genuinely is a property of the table and of the field's type. 111 separately worded sentences would invite a reader to look for a distinction that does not exist, and would let the mapping drift from the code silently. Deriving both columns from the same dictionary facts Section 4 reads means they cannot disagree with the pipeline without this cell changing too. Two asserts guard it: the ten text-derived rows must equal the ten the path search found sourceless, and row order must still match the dictionary's field positions. | Echo | A2 |
+| DEC-029 | 1 Sep | **The near-match boundary fix is applied to all three extractors**: lookarounds widened to `(?<![\w-])` / `(?![\w-])`, and a token is returned only when it is ASCII. | `\d` and `[A-Z]` are Unicode-aware under `IGNORECASE`, so `HORD` followed by Devanagari digits was accepted and `SKU-VEL` followed by them was silently truncated rather than rejected; `ORDER-HORD001451` embedded a reference that is not one. 44 of 44 test cases now pass (18 public, 26 own), and **no value on the real data changed** — the six CSVs are byte-identical before and after. These are cases a private test probes, not cases this data contains. | Shawn, Echo | D1, D2, D3 |
+
 
 ## Still open
 
 | # | Question | Who decides | By |
 |---|---|---|---|
-| Q5 | Does the master notebook get assembled by pasting sections at each gate, or does each stage owner append to the previous owner's file in turn? DEC-020 assumes pasting. Decide before G2 so nobody builds on the wrong copy. | all four | G2 (30 Aug) |
-| Q6 | Does the mapping's `notebook_evidence` cite a section number or a cell heading? It must cite the master, never a personal notebook. Depends on Q5. Blocks the last 111 mapping rows. | Echo | G2 (30 Aug) |
+| — | Nothing open. Q5 and Q6 closed 1 Sep by DEC-025 and DEC-026. | | |
 
 ## Closed
 
@@ -77,3 +90,5 @@ version; this table is the register.
 | Q2 | Canonical-row rule for exact duplicates | DEC-017 (normalise, then keep first) |
 | Q4 | Does `build_latin_analysis` take raw or cleaned text? | DEC-019 (cleaned — stated in the spec) |
 | Q1-R | `delivery_note_clean` re-opened 29 Aug — cleaned or copied? | DEC-021 (DEC-018 stands: direct copy, source case kept) |
+| Q5 | Master assembled by pasting, or appended in turn? | DEC-025 (pasting, once, by Echo) |
+| Q6 | Does `notebook_evidence` cite a section number or a heading? | DEC-026 (the master's section numbers, assigned at assembly) |

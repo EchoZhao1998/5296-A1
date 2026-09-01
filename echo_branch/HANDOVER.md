@@ -4,7 +4,7 @@
 attaches this file first; Claude reads it and continues without re-deriving anything. At the
 end of a working session, Claude updates §7 and any section that changed.
 
-**Last updated:** 28 Aug 2026 · Session 5 · by Claude
+**Last updated:** 1 Sep 2026 · Session 9 · by Claude
 
 ---
 
@@ -244,22 +244,156 @@ Colab, and no absolute personal path survives anywhere in either notebook.
 
 ## 6. Open questions
 
-| # | Question | Who decides | By |
-|---|---|---|---|
-| Q5 | Is the master notebook assembled by **pasting** finished sections at each gate, or does each stage owner **append** to the previous owner's file in turn? DEC-020 assumes pasting. Everyone's file layout depends on the answer. | all four | G2 (30 Aug) |
-| Q6 | Does the mapping's `notebook_evidence` column cite a section number (`§1.3d`) or a cell heading? Section numbers are stable under DEC-004 but only if nobody renumbers. **Depends on Q5:** if the master is assembled by pasting, numbering is assigned at paste time and headings are the safer citation. Either way the column cites the *master*, never `wip_echo.ipynb` — a citation into a personal file goes stale silently. | Echo | G1 (27 Aug) |
+**None.** Q5 and Q6 closed 1 Sep as DEC-025 (the master is assembled by pasting, once,
+by Echo) and DEC-026 (`notebook_evidence` cites the master's section numbers, assigned
+at assembly and filled in one pass straight afterwards). DEC-024 freezes Tasks 1–4
+after the 1 Sep patch window.
 
-**Closed since Session 1:** Q1 → DEC-018 (`delivery_note_clean` is a direct copy, no cleaning) ·
-Q2 → DEC-017 (normalise, then `drop_duplicates(key, keep="first")`) · Q3 → DEC-010 (folder
-renamed) · Q4 → DEC-019 (the latin-analysis and measure fields take the *cleaned* body; the
-specification states this, it was never a judgement call).
+The plan for the remaining nine days is
+`Admin/planning_and_review/Group001_Endgame_Plan.md` — mark-by-mark state, the freeze
+list, the eight chosen figures with owners and join keys, the ten findings and five ML
+questions, and the submission checklist. It supersedes the Week 2 brief.
 
-Every answered question becomes a `DEC-` row in `Admin/decision_log.md`, which now runs to
-DEC-020 and carries a **Closed** table.
+**Closed since Session 1:** Q1 → DEC-018 · Q2 → DEC-017 · Q3 → DEC-010 · Q4 → DEC-019 ·
+Q1-R → DEC-021 · Q5 → DEC-025 · Q6 → DEC-026.
+
+Every answered question becomes a `DEC-` row in `Admin/decision_log.md`, which now runs
+to DEC-026 and carries a **Closed** table.
 
 ---
 
 ## 7. Session log
+
+### Session 9 — 1 Sep 2026 · Tasks 1-4 assembled, fixed and closed
+
+`00_Master/` now exists and holds the whole submission bar the EDA and the report:
+`Group001_solution.ipynb` (184 cells), its `.py` export, `Group001_EDA.ipynb` (scaffold),
+`Group001_text_functions.py`, `requirements.txt`, the public and own test cases, and
+`outputs/` with the six CSVs, the finished mapping and the validation register. The group note
+is `00_Master/Group001_TASK1-4_CLOSED.md` — one section per person, written so nobody has to
+revise anything.
+
+**The master follows the teaching team's template numbering exactly** — 0 configuration ·
+1 parse and profile · 2 mapping · 3 text functions · 4 the six tables · 5 reconciliation ·
+6 validation register · 7 export · 8 reproducibility record. Composition: WP1 Sections 0-2,
+WP4 Section 3, WP2 Sections 4 and 7, WP3 Sections 5-6. It was assembled by a build script from
+the three WIP notebooks rather than by hand, so it can be rebuilt if any source changes.
+
+**Restart-and-Run-All completes with zero errors in about 40 seconds** and writes all eight
+files. **The six CSVs are byte-identical (sha256) to the validated set**, so no figure, check
+or number anyone has derived needs recalculating. No personal absolute path appears in any
+cell or in any stored output. **68 validation checks, 68 PASS, 0 FAIL, 0 deferred.**
+
+**The four deferred cross-source checks now run.** Section 5 rebuilds the pre-deduplication
+frames, so Yandu's `find_conflicts` and `count_overlap` are wired to real data: VAL-FLOW-09
+finds 0 field disagreements over the 8,098 rows carrying a repeated key; VAL-FLOW-10 finds 0
+differences between the two copies of any within-source duplicate (68/68 orders and deliveries,
+201/214 items, 96/96 reviews); VAL-FLOW-11 is the planted-conflict control; VAL-FLOW-12 matches
+the raw key-set intersections at 500 / 1,559 / 500 / 700. C1, C2 and E1 all land here.
+
+**The mapping is finished and frozen — A2 is done.** 111 rows, no blank and no placeholder in
+any of the nine columns, checked by re-reading the written file. DEC-028 records the rule: the
+two judgement columns are general rules looked up per row rather than 111 sentences, both
+derived from the same dictionary facts Section 4 reads, so they cannot drift from the code.
+`notebook_evidence` cites the master's section numbers, which closes Q6 in practice as well as
+on paper.
+
+**Shawn's three near-match defects are fixed** (DEC-029): lookarounds widened to `(?<![\w-])`
+on both sides and an ASCII guard on the returned token. 44/44 cases pass and **no value on the
+real data changed** — the CSVs are byte-identical before and after.
+
+**Three of Jasmine's cells were repaired in the assembled copy rather than sent back.** The
+raw-byte diagnostic now runs (it was raising `IndentationError`) and is Section 1.6; the B1/B2
+coverage cell is Section 7.1, reads the exported files and reports **100.00%** rather than the
+static 92.20%; and the export is guarded so a run not built on the published functions cannot
+write to `outputs/`. Section 4 is otherwise unchanged, reordered only to 4.2 → 4.1 → 4.3 → 4.4
+→ 4.5 → 4.6 with the dependency explained.
+
+**New fact, from the bytes rather than either parser.** `<Coupon_Code>` appears 1,048 times
+paired against 1,770 self-closing in the XML, and there are exactly 1,048 `promo` markers in
+the same file; the JSON says 1,051 and 1,051. In each file separately every populated coupon
+code has a marker in its note and no marker exists without one.
+
+**The EDA notebook is scaffolded** from the teaching team's template: it loads the six CSVs,
+carries an `at_grain()` join guard, and has all eight figure slots pre-written with owner,
+question, observation unit, denominator, tables and join keys — plus a coverage cell that
+asserts six categories, six tables and five relational figures. The ten findings and five ML
+questions carry their owners, and findings 9-10 and all five ML questions are already drafted.
+
+**What is left for Echo:** Section 1's markdown still carries working prompts ("READ ITS
+OUTPUT", "Write the reading here") — the last unfinished prose in the notebook, and a marker
+reads it. Everything else is EDA and the report.
+
+### Session 8 — 1 Sep 2026 · WP2 and WP3 re-reviewed; both are close to done
+
+Two review notes written to `Admin/planning_and_review/`:
+`Group001_wp1_review_of_wp2_0901.md` and `Group001_wp1_review_of_wp3_0901.md`.
+
+**WP2's six CSVs reproduce byte for byte from a fresh kernel** — all seven files in
+`outputs_wip_jasmine/` compared by sha256, not by eye. Real run, not placeholders
+(`promo_code` 1,873 real values, no `[SYSTEM]` in `customer_note_clean`). WP3 and the EDA
+can keep working against the files that are there.
+
+**Jasmine's DEC-021 work checks out on all four claims.** `delivery_note_clean` is a direct
+copy at 4,472 / 528 in source case; cleaning changes all 5,000 rows and nothing but case;
+`WP4_DERIVED` is 10 and the exported mapping carries exactly 10 `TODO-SHAWN` rows; the assert
+uses `len(WP4_DERIVED)`; and the mapping cell is a plain string again, so NB-5 is closed —
+the tuple that would have carried `"('Direct copy ...', '§4.4')"` into the 111-row deliverable
+is gone. The §2.4 merge can run.
+
+**Her consistency finding is bigger than she reported.** `delivery_note_clean` is not just the
+same split as `delay_reason == 'none'` — it is the same partition, row for row with zero
+disagreements on all 5,000 deliveries, as `delay_reason == 'none'`, `on_time_in_full`,
+`delay_days == 0` **and** `delivered_date <= promised_date`. The 528 break down 185 / 177 / 166
+across the three delay reasons. So it carries no information the outcome columns do not already
+carry: a four-way cross-field check for Yandu, and a redundant-feature finding for the report
+and the ML question.
+
+**Three things still open in WP2, none of which changes an exported value.**
+NB-2 the raw-byte diagnostic **does not run** — the lower-casing fix went in with broken
+indentation, so the cell raises `IndentationError` and "Restart and Run All, all good" is not
+what the file records (execution counts run 1–42 then 43 and 45 out of order, config cell
+unexecuted). It is the only failing cell. NB-3 the B1/B2 self-check still prints "before WP4
+lands: 92.20%" with WP4 loaded; asked properly the answer is **100.00% on all six tables**, so
+the cell now understates our own work, and its rubric citation ("section 4.2") is wrong — the
+95 / 90 thresholds are right but they sit under B1 and B2 in the performance-standard table.
+NB-4 DEC-022 is still not implemented. Tested replacements for all three are in the review note.
+
+**A fourth independent route to the promo count, from the raw bytes.** With the diagnostic
+fixed: `<Coupon_Code>` 1,048 paired against `<Coupon_Code />` 1,770 in the XML, and 1,048
+`promo` markers in the same file; 1,051 markers and 1,051 populated codes in the JSON. So in
+each file separately, every populated coupon code has a promotion marker in its customer note
+and no marker exists without one — which is what makes VAL-TEXT-13 a test of Shawn's extractor
+rather than two parses of the same column.
+
+**WP3 has closed every gap raised on 31 Aug.** 65 checks, all PASS. VAL-ARITH-05 now derives
+the allowed discount set from the raw files instead of passing unconditionally; new VAL-ARITH-08
+covers the spec's numeric ranges; two negative controls (the planted conflict, and the wrong tax
+formula reproducing 0 of 5,000); all six interpretation paragraphs written; the register is
+exported to CSV. The conflict detector is written and unit-tested against a fixture even though
+it cannot run until assembly, and `count_overlap` counts distinct keys rather than halving rows.
+Yandu had already implemented DEC-021 correctly in VAL-TEXT-01b before it was circulated.
+
+**Two things left in WP3.** VAL-FLOW-09/10/12 print `NOT RUN` but never reach `record()`, so the
+exported register says 65 of 65 PASS and the three deferred checks are invisible in the file the
+report will cite — a two-line fix, and a register that admits its own gaps scores better than one
+that omits them. And `find_dir()`'s `rglob` fallback resolved `TABLE_DIR` to a personal folder
+called `5196/assignment 1/...`: we cannot tell which export was validated, the name has a space
+and no `Group001_` prefix, and the register CSV lands in the data folder. The six sha256 values
+are in the review note so he can confirm which files he read.
+
+**Next session:**
+
+1. Send both review notes. Jasmine needs A/B/C before G3 (Wed 3 Sep); Yandu needs the register
+   status fix and the path confirmation.
+2. Q5 and Q6 are still open and Q6 still blocks 111 `notebook_evidence` cells. It has now been
+   open across four sessions and is the last thing standing between the mapping and A2.
+3. Shawn's ten `TODO-SHAWN` mapping rows, and his extractor patch (tested, changes no value on
+   the real data).
+4. EDA is still 4.5 marks with nothing started, and the report has no owner. That is where the
+   remaining risk is, not in WP2 or WP3.
+5. Add `VAL-FLOW-16` (the four-way delivery-note redundancy) to the register, and write the
+   redundant-feature observation into the findings.
 
 ### Session 5 — 28 Aug 2026 · WP2+WP4 notebook validated; the plan re-cut around EDA
 

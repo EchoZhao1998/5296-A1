@@ -1,0 +1,4 @@
+# Group001 — A1. Standard scientific Python only; no non-standard dependency is required.
+# Versions the submitted notebooks were last run against.
+pandas>=2.0
+matplotlib>=3.7
