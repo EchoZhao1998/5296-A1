@@ -49,8 +49,18 @@ python3 review/Group001_verify.py outputs
 
 Eight files, all `match`. That is what makes "I ran it" a fact rather than an impression.
 
-If anything says `DIFFERS`, the usual cause is an older `Group001_text_functions.py` sitting
-beside the notebook. Say so in the chat rather than building figures on it.
+If anything says `DIFFERS`, say so in the chat rather than building figures on it.
+
+**One cause is already fixed, and it is worth knowing about.** The first Windows run reported
+all eight files differing while the notebook itself ran clean and reported 68 PASS — because
+pandas writes CRLF line endings on Windows and LF everywhere else. Identical content, one extra
+byte per line, every hash different. The notebook now pins `lineterminator='\n'` on every file
+it writes and asserts afterwards that no carriage return reached the file, so the exported bytes
+no longer depend on whose machine ran it. The manifest did not change, so if you ran it before
+this fix, just re-run.
+
+If it still differs after that, the next likely cause is an older `Group001_text_functions.py`
+sitting beside the notebook.
 
 ## 4. Read your own part, and one part you did not write
 
