@@ -1,10 +1,8 @@
-# Fix (29 Aug 2026):
-# Added NFC normalisation after HTML entity decoding.
-# Narrowed Unicode filtering from all S* categories to So only
+"""Group001 - the six published text functions for FIT5196 A1.
 
-# Fix (31 Aug 2026):
-# Unified boundary handling across all three reference extractors.
-# Rejected non-ASCII look-alikes and malformed Unicode extensions.
+No file I/O, no network access and no row-specific lookup: every function takes
+one value and returns one value, so the module can be tested on its own.
+"""
 
 import re
 import html
@@ -39,20 +37,26 @@ def clean_narrative_text(value):
     text = html.unescape(value)
     text = unicodedata.normalize("NFC", text)
 
-    # remove part in <tag>
-    text = re.sub(r"<[^>]*>",                                                                   " ", text) 
-    # remove part in [SYSTEM] [CATALOGUE] [VERIFIED_PURCHASE] [SOURCE: mobile-app ©] [SOURCE: web-form ™] [RATING: 4/5]
-    text = re.sub(r"\[(?:SYSTEM|CATALOGUE|VERIFIED_PURCHASE|SOURCE:[^]]+|RATING:\s*[1-5]/5)\]", " ", text, flags=re.IGNORECASE)
-    # remove url
-    text = re.sub(r"https?://\S+",                                                              " ", text, flags=re.IGNORECASE)
-    # remove coupon 
-    text = re.sub(r"\bPROMO:\s*B[1-5]SAVE-\d{2}\b",                                             " ", text, flags=re.IGNORECASE)
-    # remove ref
-    text = re.sub(r"\bReference:\s*[HC]ORD\d{6}\b\s*[/|;]?",                                    " ", text, flags=re.IGNORECASE)
-    # remove SKU
-    text = re.sub(r"\bSKU:\s*SKU-[A-Z0-9]+\b",                                                  " ", text, flags=re.IGNORECASE)
-    # remove #verified-buyer @store_support
-    text = re.sub(r"(?:#verified-buyer|@store_support)\b",                                      " ", text, flags=re.IGNORECASE)
+    # remove <tag> markup, keeping the human-readable content it wraps
+    text = re.sub(r"<[^>]*>", " ", text)
+
+    # remove the published bracketed markers:
+    # [SYSTEM] [CATALOGUE] [VERIFIED_PURCHASE] [SOURCE: ...] [RATING: n/5]
+    text = re.sub(r"\[(?:SYSTEM|CATALOGUE|VERIFIED_PURCHASE|SOURCE:[^]]+|RATING:\s*[1-5]/5)\]",
+                  " ", text, flags=re.IGNORECASE)
+
+    # remove urls
+    text = re.sub(r"https?://\S+", " ", text, flags=re.IGNORECASE)
+
+    # remove PROMO: and its code
+    text = re.sub(r"\bPROMO:\s*B[1-5]SAVE-\d{2}\b", " ", text, flags=re.IGNORECASE)
+
+    # remove the review reference wrapper, then the SKU wrapper
+    text = re.sub(r"\bReference:\s*[HC]ORD\d{6}\b\s*[/|;]?", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bSKU:\s*SKU-[A-Z0-9]+\b", " ", text, flags=re.IGNORECASE)
+
+    # remove the two social markers
+    text = re.sub(r"(?:#verified-buyer|@store_support)\b", " ", text, flags=re.IGNORECASE)
 
     # remove Unicode emoji but will keep others like $+=
     text = "".join(char for char in text if unicodedata.category(char) != "So")

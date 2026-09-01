@@ -1,258 +1,146 @@
-# Tasks 1–4 are closed — 1 September 2026
+# Tasks 1–4 — current state, 2 September 2026
 
-**Read the whole thing, not just your own section.** It is four short sections and it is
-the only document that describes the whole pipeline as it now stands.
+Supersedes the long 1 Sep version of this note. The feedback we got was that the
+notebook was over-engineered, and that A1 is marked against the specification and
+nothing else. Today's pass removed the parts that were not evidence for a
+specification requirement, folded in Jasmine's and Yandu's revisions, and re-ran
+everything. **No exported value changed.**
 
-Nothing here needs a reply and nothing here needs you to revise your notebook. Your work
-has been assembled into the master notebook, the small defects were fixed in the assembled
-copy, and this note tells you exactly what was changed in your part and why. If you disagree
-with a change, say so and we change it back — but do not re-do work.
+## What the notebook is now
 
----
+`Group001_solution.ipynb` — **89 cells, 61 code**, runs Restart-and-Run-All from a
+fresh kernel in about 30 seconds with 0 errors, and writes all eight files.
 
-## What now exists
+| | |
+|---|---|
+| Six standardised CSVs + mapping | byte-identical (sha256) to the set we validated on 1 Sep |
+| Validation register | **67 checks, 67 PASS, 0 FAIL, 0 NOT RUN** |
+| Mapping | 111 rows, no blank and no placeholder in any of the nine columns |
+| Text functions | **44 / 44** cases pass (18 public + 26 our own) |
+| Tested on | pandas 2.3.3 and 3.0.2 — identical bytes |
+| Absolute paths | none, in any cell or in any stored output |
 
-`00_Master/` in the shared folder:
+`Group001_solution.py` is regenerated from the notebook, and was run from a
+different working directory to confirm it reproduces the same eight files.
 
-```
-00_Master/
-├── Group001_solution.ipynb    the whole workflow, one file, 184 cells
-├── Group001_solution.py       exported from it, parses cleanly
-├── Group001_EDA.ipynb         scaffold: loads the six CSVs, 8 figure slots with owners
-├── Group001_text_functions.py the six published functions
-├── Group001_own_text_test_cases.csv
-├── requirements.txt
-├── templates/A1_public_text_test_cases.csv
-└── outputs/
-    ├── the six standardised CSVs
-    ├── Group001_source_to_target_mapping.csv     111 rows, complete
-    └── Group001_validation_register.csv          68 checks
-```
+## What was cut, and why
 
-**The master notebook runs Restart-and-Run-All from a fresh kernel with zero errors, in about
-40 seconds, and writes all eight files.** It follows the teaching team's template numbering
-exactly: 0 configuration · 1 parse and profile · 2 mapping · 3 text functions · 4 the six
-tables · 5 reconciliation · 6 validation register · 7 export · 8 reproducibility record.
+Everything cut was work the notebook did **twice**, not evidence the marker wants.
 
-**The six CSVs it produces are byte-for-byte identical to the ones we have been working
-against** — compared by sha256, all six. So no figure, no check and no number anyone has
-already derived needs recalculating.
+1. **The normalisation plan was built three times** — by hand in Section 1.3,
+   cross-checked against the dictionary, then derived from the dictionary again in
+   Section 4.0. It is now derived **once**, in Section 1.3, and Section 4 applies
+   that same plan. This is also the honest version: the plan is read from
+   `public_data_dictionary.csv`, never typed out.
+2. **The money / percent / boolean / date normalisers were defined twice** (once in
+   each of those places). Now once.
+3. **The target contract was printed three times** in Section 4.0. Now once, as the
+   full per-table table, which is the part that is actual evidence.
+4. Teaching comments left in Section 1 about how f-string padding works.
+5. `VAL-FLOW-11`, Yandu's planted-conflict fixture. It proved the conflict detector
+   fires, which is good practice, but the specification asks for the overlap result,
+   not a negative control — and `VAL-FLOW-09/10/12` already report it on the real
+   data. That is why the register is 67 and not 68.
 
-**Validation: 68 checks, 68 PASS, 0 FAIL, 0 deferred.**
+## What was merged in from your revisions
 
----
+- **Shawn / text functions.** The refactor into one shared `_extract_reference`
+  helper is in. It was checked against 78,442 real string values from both raw files
+  plus a boundary set (`HORD1234567`, `xHORD123456`, `SKU-`, `B6SAVE-24`, Devanagari
+  digits, …): **behaviour is identical to the previous version on every one**, in
+  25 fewer lines. `matework/` and `00_Master/` now hold the same file.
+- **Yandu / VAL-TEXT-08.** Your extra arm is in — the flag must be `False` on
+  reviews that contain non-ASCII characters but no non-Latin letter. It is derived
+  rather than driven by a language list, so it now reads *0 of 430 accented-Latin
+  reviews wrongly flagged*. This is the check for the specification sentence "a
+  non-ASCII character is not automatically non-Latin".
+- Where your notebook and the master differ elsewhere (Sections 6.1, 6.3, 6.5), the
+  master version is kept, because it derives its expected values from the dictionary
+  or the raw files instead of naming them. `VAL-TIME-04` is the clearest example:
+  yours asserted `years == [2018]`, the master compares the exported years against
+  the years actually present in both raw files. The specification says not to write
+  an assertion that only confirms a hard-coded answer.
+- **Jasmine / Section 4.** Nothing was missing — every difference between
+  `wip_jasmine.ipynb` and the master is the master already being ahead (the export
+  cell now pins LF line endings, refuses to write unless the published text
+  functions are the ones imported, and reads each file back to compare it against
+  the frame Section 6 validated).
 
-## Jasmine — Task 2, and thank you for the `delivery_note_clean` call
+## On the normalisation plan — whose version survived
 
-Your six tables went into the master **unchanged**. Every number reproduces: 5,000 / 15,685 /
-500 / 5,000 / 1,000 / 7,000, all six primary keys unique and complete, all eight foreign keys
-with no orphans, the whole monetary chain inside 0.01 on every row, and the six exported files
-identical to yours to the byte.
+Both. The record is `wip_jasmine.ipynb` cell 19, which ends: *"Otherwise the plan I
+derived from the dictionary matches your hand-written map exactly — two independent
+routes to the same answer."* Jasmine did not reject the plan; she raised two
+corrections to the hand-written map, and both are still in force:
 
-You were right about `delivery_note_clean`, and the evidence is stronger than either of us
-said. It is not only the same split as `delay_reason == 'none'` — it is the same partition,
-**row for row with zero disagreements across all 5,000 deliveries**, as `delay_reason`,
-`on_time_in_full`, `delay_days == 0` *and* `delivered_date <= promised_date`. Four columns
-built by different parts of the pipeline agreeing on one split. That is now finding 10 in the
-report and it is also why it must never be a predictor.
+- **`percent` cannot be derived** and must stay — the dictionary describes the target
+  type, not how each file spells it. `PERCENT_FIELDS = {'coupon_discount'}` is still
+  there, and the mapping row still says so.
+- **`date` and `datetime` must stay apart** — they parse the same but export
+  differently, and merging them appends `00:00:00` to the five `date` fields. The plan
+  still prints them as separate categories.
 
-Four things were changed in the assembled copy:
+So the mechanism is Jasmine's `normalisation_plan()`, reading `data_type` and
+`comparison_rule` from the dictionary, carrying the two facts no dictionary scan can
+recover. What was deleted was the *hand-typed second copy* of the same map and the cell
+that asserted the two routes agree — with one route left there is nothing to
+cross-check, and that was the clearest case of the notebook doing the same work twice.
+The source-format evidence Task 1 asks for is untouched: Sections 1.2 and 1.3 still
+print `'AUD 2,765.47'` against `2765.47`, `'10%'`, `Y`/`N` and the day-first dates side
+by side, and the before/after table still shows 7 conflicting columns going to 0.
 
-1. **The raw-byte diagnostic now runs.** The lower-casing fix was right; the indentation broke
-   it, so the cell was raising `IndentationError` and printing nothing. It is now Section 1.6,
-   and it searches both spellings — the JSON writes `couponCode`, the XML writes `Coupon_Code`,
-   so a single spelling gives a column of zeros that reads as absence.
-   It produces something better than we expected: `<Coupon_Code>` appears 1,048 times paired
-   against 1,770 self-closing, and there are exactly 1,048 `promo` markers in the same file;
-   the JSON says 1,051 and 1,051. **In each file separately, every populated coupon code has a
-   promotion marker in its note and no marker exists without one** — read straight from the
-   bytes, by neither parser. That is what makes VAL-TEXT-13 a real test of Shawn's extractor.
-2. **The B1/B2 coverage cell is now Section 7.1 and reads the exported files.** It was printing
-   "before WP4 lands: 92.20%" from a static list. Asked properly — a field is unfilled only if
-   it is sentinel or blank on *every* row — the answer is **100.00% on all six tables**. It was
-   understating your own work. The rubric reference was also wrong: the 95 / 90 thresholds are
-   real but they sit under B1 and B2, not "section 4.2".
-3. **The export is guarded** (Section 7). It asserts the six text functions are the published
-   module before writing, so a run built on anything else cannot reach `outputs/` silently.
-4. **`§4` cells were reordered to 4.2 → 4.1 → 4.3 → 4.4 → 4.5 → 4.6**, with a short markdown
-   cell saying why: `order_price` is the sum of the canonical line revenues, so `order_items`
-   has to exist first. Your build order, just tightened, and now explained to a marker.
+## Line lengths, for reading on a laptop
 
-Your Section 2 mapping rows were not merged as a file — the marker will not have
-`outputs_wip_jasmine/`. The same wording is generated inside the master at Section 2.3.
+Three of us work on 13-inch Macs, so long lines were wrapped. **Nothing but whitespace
+moved** — every re-split f-string joins to the same characters, and all eight files are
+still byte-identical.
 
-**Nothing to do.** For the rest of the week: Figures 3 and 4, findings 3–4, ML question 1, and
-the report's limitations and conclusion.
-
----
-
-## Yandu — Task 4, and the four checks that were deferred now run
-
-Your register went into the master as Section 6, essentially unchanged, and it is the strongest
-part of the notebook. What you did that the rubric explicitly rewards: every expected number is
-worked out from the raw files in the same cell that checks it, nothing is typed in, and the two
-negative controls prove the checks have teeth rather than asserting it.
-
-**VAL-FLOW-09, -10, -11 and -12 now run.** You were right that they need the frame from before
-deduplication and that no personal notebook has it. The master does: Section 5 rebuilds it, and
-your `find_conflicts` and `count_overlap` are wired to the real frames. Results:
-
-- **VAL-FLOW-09** — 8,098 rows carry a key that appears more than once; **0 field disagreements**
-  after normalisation, across all six tables.
-- **VAL-FLOW-10** — within-source repeated keys are 68/68 for orders and deliveries, 201/214 for
-  items, 96/96 for reviews, and there are **0 field differences** between the two copies of any
-  of them. This is what makes `keep="first"` safe rather than lossy.
-- **VAL-FLOW-11** — your planted-conflict fixture, kept as the negative control.
-- **VAL-FLOW-12** — keys carried by both files: 500 orders, 1,559 items, 500 deliveries, 700
-  reviews, matching the raw key-set intersections. Your point about counting distinct keys
-  rather than halving a row count is why these are right: halving reads 513 / 1,600 / 513 / 721.
-
-The register is **68 PASS, 0 FAIL, 0 NOT RUN**, and it is written to
-`outputs/Group001_validation_register.csv` so the report can cite `VAL-` IDs from a file.
-
-Two other changes: `record()` now accepts `None` for a check that cannot run, so a future gap
-appears in the exported file as `NOT RUN` instead of vanishing; and the path resolution was
-replaced — the `rglob` fallback could silently read a stale copy of the six CSVs, and Section 6
-now validates the tables **as they are about to be written**, through an in-memory round trip
-with the exact export formatting, so a formatting fault is caught before export rather than
-after.
-
-**Nothing to do.** For the rest of the week: Figures 1 and 7, findings 5–6 and 9–10, ML
-question 4, and the report's data-preparation assurance section — the one that cites `MAP-` and
-`VAL-` IDs. That section is yours because you are the only one who can write it quickly.
-
----
-
-## Shawn — Task 3, and the three near-match defects are fixed
-
-Your six functions are in the master as Section 3.1, imported from the module rather than
-redefined, so the module the marker imports is the module the notebook used.
-
-**All 44 test cases pass — 18 public and 26 of our own.** Three small defects were fixed, all
-in the boundary handling, and **not one value on the real data changed**: the six exported CSVs
-are byte-identical before and after the patch. These are the cases a private test probes:
-
-| Input | Before | After |
+| | longest line | before |
 |---|---|---|
-| `ORDER-HORD001451` | `HORD001451` | `NaN` |
-| `HORD१२३४५६` | `HORD१२३४५६` accepted | `NaN` |
-| `SKU-VEL१२३` | `SKU-VEL` (silently truncated) | `NaN` |
-| `SKU-VEſ00` | `SKU-VES00` | `NaN` |
+| `Group001_solution.ipynb` (code) | 98 | 119 |
+| `Group001_text_functions.py` | 95 | 127 |
+| `Group001_solution.py` | 98 | 119 |
 
-The change is two lines per extractor. The boundary went from `(?<![A-Z0-9])` to `(?<![\w-])`
-on both sides — `\w` is Unicode-aware, so a Devanagari digit next to the token now rejects it
-instead of letting the match end early — and each extractor returns the token only if it is
-ASCII. `\d` and `[A-Z]` match non-ASCII digits and letters under `IGNORECASE`, which is what
-let all three through.
+The worst offender was the `clean_narrative_text` block, where eight `re.sub` calls were
+padded out to 127 characters to line up the `" ", text` column. One call per line now,
+each with its own short comment. The only lines still over 96 are eleven prose strings
+in Section 2.3 at 97–98 characters — those strings become the mapping CSV's
+`transformation_or_derivation` column, so they were left alone rather than risk the
+bytes for one character of width.
 
-**Your ten mapping rows are written**, from your code rather than from a description of it —
-each names which function produces the field and which value it reads, because that is the
-distinction that matters: extraction runs on the **raw** text before cleaning removes the
-wrapper it looks for, and the measure and analysis fields run on the **cleaned** text. Check
-Section 2.3 of the master and tell me if any wording misstates what your code does.
+## Two defects fixed while we were in there
 
-**Nothing to do.** For the rest of the week: Figures 5 and 8, findings 7–8, ML question 3, the
-AI declaration and the chat-export index, and reviewing the master notebook.
+- The validation register was written without a fixed line terminator, so a run on
+  Windows would have written CRLF and then failed Section 8's own check. Pinned.
+- The `### 4.0 Shared transformation rules` heading sat *after* all the 4.0 code.
+  Moved to where it belongs — it is also the cell that explains why 4.2 runs before
+  4.1 (`order_price` is the sum of the rounded line revenues).
 
----
+## Running it in Colab from the shared drive
 
-## Echo — what is actually left
+The notebook now has a first cell that does nothing at all off Colab. Opened in Colab it
+mounts Drive, **finds** the allocated package by searching `MyDrive` for
+`Group001_commerce.json` rather than having anyone's folder path typed into it, moves into
+`00_Master/`, and writes the eight files into `00_Master/outputs/` on the drive. It stops
+with a clear message rather than guessing if the drive holds two copies of the package.
 
-Tasks 1–4 are closed. What remains:
+Tested against a copy of our drive layout (`5196/G1_A1/` with `DATA/`, `00_Master/`,
+`02_Outputs/`) and against the two layouts a marker might use — package kept whole, and the
+submission unzipped flat. **All three produce the identical eight files**, and the Colab run
+leaves nothing behind in the session folder.
 
-1. **Read Section 1's markdown.** Several cells still carry working prompts — "READ ITS
-   OUTPUT", "Write the reading here from the two outputs above". They are yours and they are
-   the last unfinished prose in the notebook. A marker reads them.
-2. **Q5 and Q6 are closed** as DEC-025 and DEC-026, and the mapping is finished: 111 rows, no
-   blanks and no placeholders in any of the nine columns, checked by re-reading the written
-   file rather than the frame in memory. **A2 is done.**
-3. **Everything else is EDA and the report**, per the endgame plan.
+So the shared CSVs will be a set the pipeline produced on the drive, not a set uploaded by
+hand. Please still run your own review copy on your own machine and check it against
+`review/Group001_outputs.sha256` — that is what makes "I ran it" a fact.
 
----
+## What this means for you
 
-## The mapping, and the rules it was closed on
+Nothing you have to redo. Tasks 1–4 are closed and the outputs are unchanged, so
+any figure already built on `outputs/` is still correct.
 
-All 111 rows are complete. The two judgement columns were written as general rules rather than
-111 individual sentences, because the rule genuinely is a property of the table and 111
-sentences would invite a reader to look for a distinction that does not exist.
+**Only one person runs the solution notebook.** The EDA notebook reads the six CSVs
+and nothing else — see `review/Group001_HOW_TO_REVIEW.md`. Read your own section
+and one you did not write, so all four of us can explain the whole thing.
 
-**`transformation_or_derivation`** takes one of four shapes, and which one is looked up, never
-decided by hand: a **cast** where the dictionary types the field and the two sources spell it
-differently (59 direct copies, 15 numeric casts, 7 datetime, 7 boolean, 6 money, 1 percent); a
-**direct copy**; a **recomputation** for the five monetary fields the specification defines by
-formula; and a **text derivation** for the ten fields with no source column of that name. Money
-is identified by the dictionary's own `comparison_rule`, which is the same fact Section 4 reads,
-so the two cannot drift apart.
-
-**`overlap_or_conflict_rule`** has three shapes:
-
-- **61 rows, four tables from both files** — concatenate, normalise, then one row per business
-  key with `keep="first"`. Deduplication *after* normalisation, so `10` against `10%` and
-  `true` against `Y` are not read as disagreements. A key whose two sources give different
-  non-missing values is recorded as a conflict in the register rather than resolved by a silent
-  precedence rule.
-- **40 rows, two single-source tables** — customers exist only in the JSON and products only in
-  the XML, so no cross-source overlap is possible. Saying so is the honest entry.
-- **10 rows, computed fields** — derived after deduplication from the canonical row, so they
-  inherit the rule of the raw field they are computed from and are never compared in their own
-  right.
-
-**`notebook_evidence`** cites the master's section numbers — Section 4.1 through 4.6 by table,
-plus "(functions Section 3.1)" for the ten derived fields. Section numbers rather than headings,
-because the numbering comes from the supplied template and is now fixed.
-
-Two independent checks guard it: the ten text-derived rows must be exactly the ten rows the path
-search found sourceless, and the row order must still match the dictionary's own field
-positions. Both are asserted in Section 2.5, and the file is re-read from disk to check it.
-
----
-
-## One thing worth knowing about the whole pipeline
-
-The notebook is written so that its claims are *derived* rather than declared, and that is the
-single thing that separates it from a notebook that merely works:
-
-- `derived` is not a list anyone wrote — it is what is left when no field of that name exists at
-  that grain in either file, and it lands on exactly the ten text fields by a second route.
-- The canonical row counts are the union of business keys read from the raw files, not numbers
-  typed into an assert.
-- The conflict detector is shown finding a planted conflict before it is trusted to report zero.
-- The wrong tax formula is shown reproducing 0 of 5,000 order totals, which is what makes the
-  right one mean something.
-
-If anyone is asked in a demo "how do you know this is right?", that is the answer: nothing in
-the notebook is asserted, everything is checked against the files.
-
----
-
-## Addendum, later on 1 Sep — how to actually run this
-
-**Only one person needs to run `Group001_solution.ipynb`.** It has already been run; the six
-CSVs in `outputs/` are its output. The EDA notebook reads those CSVs and nothing else, so three
-of us never need to touch the pipeline. Four people running it in four environments is four
-chances for the outputs to diverge, for no benefit.
-
-**So the working set for the week is three things:**
-
-1. `outputs/` — the six CSVs
-2. `Group001_EDA.ipynb` — already loads them, already has your two figure slots
-3. `eda_briefs/Group001_EDA_brief_<your name>.md` — paste it into your own AI chat
-
-**On Colab.** Put `00_Master/` in the shared Drive folder and open `Group001_EDA.ipynb` from
-there. Its first cell mounts Drive, searches for `Group001_orders_standardised.csv` and changes
-directory to wherever it finds it, so you do not have to edit a path. If you would rather work
-locally, download `outputs/` and the notebook into one folder and it will find them there too.
-
-**If you do want to run the solution notebook**, it needs the allocated package. Put
-`raw_input/` beside the notebook, or keep `Group001_A1/` next to it — both layouts work, both
-have been tested from a clean folder. It takes about 40 seconds and writes everything in
-`outputs/` from scratch.
-
-**The notebook was trimmed for submission.** 184 cells down to 168: the coloured notes addressed
-to each of us by name, the pasted screenshot, the working prompts and the teaching examples are
-gone, along with every decision-log code and every `→ YANDU` hand-off. Six groups of adjacent
-code cells were merged. The explanatory markdown stays, because that is precisely what the top
-band asks for — "profiling assumptions accurately profiled with traceable evidence" — and
-cutting it would cost marks rather than save them.
-
-**The six CSVs are unchanged after all of that.** Verified by hash again after the trim.
+The marks that are still open are the EDA, the ten findings and the five ML
+questions. That is where the remaining time goes.

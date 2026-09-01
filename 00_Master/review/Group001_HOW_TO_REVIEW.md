@@ -29,10 +29,13 @@ Group001_A1/
     └── Group001_operations.xml
 ```
 
-**Why your own machine.** The notebook writes `outputs/` beside itself. If four of us open it
-from the shared drive, we each overwrite the shared folder in turn and nobody can tell whose
-copy survived. The notebook now detects a mounted drive and writes to local storage instead,
-but the simplest thing is not to put it in that position.
+**Why your own machine.** The notebook writes `outputs/` beside itself. Opened in Colab from the
+shared drive it now mounts the drive, moves into `00_Master/` and writes the six CSVs into
+`00_Master/outputs/` there — which is exactly what we want **once**, from one person, so the
+shared copy is a copy the pipeline produced rather than one somebody uploaded. It is not what we
+want four times: we would each overwrite the shared folder in turn and nobody could tell whose
+copy survived. So run it on your own machine, in your own folder, and compare against the
+manifest.
 
 ## 2. Run it
 
@@ -52,7 +55,7 @@ Eight files, all `match`. That is what makes "I ran it" a fact rather than an im
 If anything says `DIFFERS`, say so in the chat rather than building figures on it.
 
 **One cause is already fixed, and it is worth knowing about.** The first Windows run reported
-all eight files differing while the notebook itself ran clean and reported 68 PASS — because
+all eight files differing while the notebook itself ran clean and reported 67 PASS — because
 pandas writes CRLF line endings on Windows and LF everywhere else. Identical content, one extra
 byte per line, every hash different. The notebook now pins `lineterminator='\n'` on every file
 it writes and asserts afterwards that no carriage return reached the file, so the exported bytes
@@ -65,7 +68,7 @@ sitting beside the notebook.
 ## 4. Read your own part, and one part you did not write
 
 The point of the review is not to re-check the numbers — those are checked by the notebook
-itself, 68 times. It is to confirm that **what the notebook says it does is what your code
+itself, 67 times. It is to confirm that **what the notebook says it does is what your code
 does**, because a marker reads the words and runs the code.
 
 **Everyone:** read Section 2.3 and 2.4. Those two cells generate the wording of all 111 mapping

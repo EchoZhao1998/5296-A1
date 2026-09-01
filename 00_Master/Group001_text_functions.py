@@ -1,6 +1,8 @@
-# Fix (29 Aug 2026):
-# Added NFC normalisation after HTML entity decoding.
-# Narrowed Unicode filtering from all S* categories to So only
+"""Group001 - the six published text functions for FIT5196 A1.
+
+No file I/O, no network access and no row-specific lookup: every function takes
+one value and returns one value, so the module can be tested on its own.
+"""
 
 import re
 import html
@@ -35,26 +37,64 @@ def clean_narrative_text(value):
     text = html.unescape(value)
     text = unicodedata.normalize("NFC", text)
 
-    # remove part in <tag>
-    text = re.sub(r"<[^>]*>",                                                                   " ", text) 
-    # remove part in [SYSTEM] [CATALOGUE] [VERIFIED_PURCHASE] [SOURCE: mobile-app ©] [SOURCE: web-form ™] [RATING: 4/5]
-    text = re.sub(r"\[(?:SYSTEM|CATALOGUE|VERIFIED_PURCHASE|SOURCE:[^]]+|RATING:\s*[1-5]/5)\]", " ", text, flags=re.IGNORECASE)
-    # remove url
-    text = re.sub(r"https?://\S+",                                                              " ", text, flags=re.IGNORECASE)
-    # remove coupon 
-    text = re.sub(r"\bPROMO:\s*B[1-5]SAVE-\d{2}\b",                                             " ", text, flags=re.IGNORECASE)
-    # remove ref
-    text = re.sub(r"\bReference:\s*[HC]ORD\d{6}\b\s*[/|;]?",                                    " ", text, flags=re.IGNORECASE)
-    # remove SKU
-    text = re.sub(r"\bSKU:\s*SKU-[A-Z0-9]+\b",                                                  " ", text, flags=re.IGNORECASE)
-    # remove #verified-buyer @store_support
-    text = re.sub(r"(?:#verified-buyer|@store_support)\b",                                      " ", text, flags=re.IGNORECASE)
+    # remove <tag> markup, keeping the human-readable content it wraps
+    text = re.sub(r"<[^>]*>", " ", text)
+
+    # remove the published bracketed markers:
+    # [SYSTEM] [CATALOGUE] [VERIFIED_PURCHASE] [SOURCE: ...] [RATING: n/5]
+    text = re.sub(r"\[(?:SYSTEM|CATALOGUE|VERIFIED_PURCHASE|SOURCE:[^]]+|RATING:\s*[1-5]/5)\]",
+                  " ", text, flags=re.IGNORECASE)
+
+    # remove urls
+    text = re.sub(r"https?://\S+", " ", text, flags=re.IGNORECASE)
+
+    # remove PROMO: and its code
+    text = re.sub(r"\bPROMO:\s*B[1-5]SAVE-\d{2}\b", " ", text, flags=re.IGNORECASE)
+
+    # remove the review reference wrapper, then the SKU wrapper
+    text = re.sub(r"\bReference:\s*[HC]ORD\d{6}\b\s*[/|;]?", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bSKU:\s*SKU-[A-Z0-9]+\b", " ", text, flags=re.IGNORECASE)
+
+    # remove the two social markers
+    text = re.sub(r"(?:#verified-buyer|@store_support)\b", " ", text, flags=re.IGNORECASE)
 
     # remove Unicode emoji but will keep others like $+=
     text = "".join(char for char in text if unicodedata.category(char) != "So")
 
     text = " ".join(text.lower().split())
     return text or NAN
+
+
+def _extract_reference(value, pattern):
+    """Extract one bounded ASCII reference and return it in upper case.
+    提取一个边界完整的 ASCII 编号，并以大写形式返回。
+    Args / 参数:
+        value (object): Raw narrative value. 原始叙述文本值。
+        pattern (str): Regex for the reference format. 编号格式正则。
+    Returns / 返回:
+        str: Upper-case reference, or literal "NaN" when invalid or absent.
+             大写编号；格式无效或不存在时返回字面量 "NaN"。
+    """
+    if _missing(value):
+        return NAN
+
+    # No letter, digit, underscore or hyphen may touch either end.
+    # 编号两端不能紧邻字母、数字、下划线或连字符。
+    match = re.search(
+        r"(?<![\w-])" + pattern + r"(?![\w-])",
+        value,
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return NAN
+
+    # Published reference formats are ASCII; reject Unicode look-alikes.
+    # 规定的编号格式仅限 ASCII，拒绝其他文字系统中的相似字符。
+    token = match.group(0)
+    if not token.isascii():
+        return NAN
+
+    return token.upper()
 
 
 def extract_order_reference(value):
@@ -66,21 +106,7 @@ def extract_order_reference(value):
         str: Upper-case order reference, or literal "NaN" when absent.
              大写订单编号；不存在时返回字面量 "NaN"。
     """
-    if _missing(value):
-        return NAN
-
-    # Match a standalone HORD/CORD followed by exactly six digits.
-    match = re.search(
-        r"(?<![\w-])[HC]ORD\d{6}(?![\w-])",
-        value,
-        flags=re.IGNORECASE,
-    )
-    if not match:
-        return NAN
-    token = match.group(0)
-    # \d and [A-Z] match non-ASCII digits and letters under IGNORECASE, so a
-    # near match such as a Devanagari-digit code must be rejected, not truncated.
-    return token.upper() if token.isascii() else NAN
+    return _extract_reference(value, r"[HC]ORD\d{6}")
 
 
 def extract_product_sku(value):
@@ -92,22 +118,7 @@ def extract_product_sku(value):
         str: Upper-case product SKU, or literal "NaN" when absent.
              大写产品 SKU 不存在时返回字面量 "NaN"。
     """
-    if _missing(value):
-        return NAN
-
-    # Match a standalone SKU- followed by letters or digits; reject extensions.
-    # 匹配独立的 SKU-及其后的字母或数字，并拒绝额外扩展。
-    match = re.search(
-        r"(?<![\w-])SKU-[A-Z0-9]+(?![\w-])",
-        value,
-        flags=re.IGNORECASE,
-    )
-    if not match:
-        return NAN
-    token = match.group(0)
-    # \d and [A-Z] match non-ASCII digits and letters under IGNORECASE, so a
-    # near match such as a Devanagari-digit code must be rejected, not truncated.
-    return token.upper() if token.isascii() else NAN
+    return _extract_reference(value, r"SKU-[A-Z0-9]+")
 
 
 def extract_promo_code(value):
@@ -122,22 +133,7 @@ def extract_promo_code(value):
         str: Upper-case promotion code, or literal "NaN" when absent.
              大写促销码；不存在时返回字面量 "NaN"。
     """
-    if _missing(value):
-        return NAN
-
-    # Match a standalone B1-B5 SAVE code followed by exactly two digits.
-    # 匹配独立的 B1-B5 SAVE 促销码及其后的两位数字。
-    match = re.search(
-        r"(?<![\w-])B[1-5]SAVE-\d{2}(?![\w-])",
-        value,
-        flags=re.IGNORECASE,
-    )
-    if not match:
-        return NAN
-    token = match.group(0)
-    # \d and [A-Z] match non-ASCII digits and letters under IGNORECASE, so a
-    # near match such as a Devanagari-digit code must be rejected, not truncated.
-    return token.upper() if token.isascii() else NAN
+    return _extract_reference(value, r"B[1-5]SAVE-\d{2}")
 
 def build_latin_analysis(value):
     """Build a Latin-script analysis value from cleaned narrative text.

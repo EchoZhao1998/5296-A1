@@ -1,22 +1,68 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+
 # # FIT5196 Assessment 1 - Solution Notebook
-# 
+#
 # **Group:** Group001
-# 
+#
 # This notebook parses the allocated JSON and XML files, creates the six required
 # tables, tests the published text interface, reconciles overlap, validates the
 # results, and exports the assessed CSV files.
-# 
+
 
 # ## 0. Configuration and reproducibility
-# 
+#
 # All paths are relative or configurable. The workflow runs offline from a fresh
 # kernel and writes generated files to `OUTPUT_DIR`.
-# 
+#
+# The first cell mounts Google Drive when the notebook is opened in Colab and does
+# nothing anywhere else, so the configuration cell stays free of environment-specific
+# code.
+
 
 # In[1]:
+
+
+# --- Section 0: Google Colab ---
+# On Colab, mount the shared drive and move into this notebook's own folder there, so the
+# cells below read the allocated package and write the six CSVs back into the shared folder
+# rather than into the Colab session, which is discarded when the runtime ends.
+# Off Colab this whole cell does nothing and the paths below stay relative.
+GROUP_ID = 'Group001'
+
+try:
+    from google.colab import drive
+except ImportError:
+    pass
+else:
+    import os
+    from pathlib import Path as _Path
+
+    drive.mount('/content/drive')
+
+    # The allocated package is found, not typed, so the name of the shared folder does
+    # not matter and no one's drive layout is written into the notebook.
+    _packages = sorted({p.parents[1] for p in
+                        _Path('/content/drive/MyDrive').rglob(f'{GROUP_ID}_commerce.json')})
+    if len(_packages) != 1:
+        # Never guess. Two copies of the raw package mean two possible project folders,
+        # and silently choosing one would write the outputs into the wrong place.
+        for _p in _packages:
+            print('  found:', _p)
+        raise SystemExit(f'Expected one {GROUP_ID} package under MyDrive, '
+                         f'found {len(_packages)}. Leave one copy on the drive.')
+
+    COLAB_INPUT_DIR = _packages[0] / 'raw_input'
+
+    # Work from the folder holding this notebook, so outputs/ lands beside review/.
+    _home = next((p / '00_Master' for p in _packages[0].parents
+                  if (p / '00_Master').is_dir()), _packages[0].parent)
+    os.chdir(_home)
+    print('working folder:', _home.relative_to('/content/drive/MyDrive'))
+
+
+# In[2]:
 
 
 # --- Section 0: configuration ---
@@ -29,11 +75,13 @@ GROUP_ID = 'Group001'
 BASE_DIR = Path(__file__).resolve().parent if '__file__' in globals() else Path.cwd()
 
 INPUT_CANDIDATES = [
+    globals().get('COLAB_INPUT_DIR'),            # set by the Colab cell; absent elsewhere
     BASE_DIR / 'raw_input',
     BASE_DIR / 'Group001_A1' / 'raw_input',
     BASE_DIR.parent / 'Group001_A1' / 'raw_input',
+    BASE_DIR.parent / 'DATA' / 'Group001_A1' / 'raw_input',
 ]
-INPUT_DIR = next((p for p in INPUT_CANDIDATES if p.is_dir()), None)
+INPUT_DIR = next((p for p in INPUT_CANDIDATES if p is not None and p.is_dir()), None)
 assert INPUT_DIR is not None, f'No input folder found. Tried: {INPUT_CANDIDATES}'
 
 OUTPUT_DIR = BASE_DIR / 'outputs'
@@ -43,24 +91,34 @@ JSON_PATH = INPUT_DIR / f'{GROUP_ID}_commerce.json'
 XML_PATH  = INPUT_DIR / f'{GROUP_ID}_operations.xml'
 DICT_PATH = INPUT_DIR.parent / 'public_data_dictionary.csv'
 
+def show(path):
+    """A path written relative to this notebook, so no one's folder layout is stored
+    in the saved output. A path outside it keeps its last three parts, which is enough
+    to identify it without recording where anybody's drive is mounted."""
+    path = path.resolve()
+    try:
+        return path.relative_to(BASE_DIR)
+    except ValueError:
+        return Path(*path.parts[-3:])
+
 for label, path in [('input', INPUT_DIR), ('output', OUTPUT_DIR)]:
-    print(f'{label:7s} {path}')
+    print(f'{label:7s} {show(path)}')
 
 
 # ## 1. Parse and profile the two sources
-# 
+#
 # JSON and XML are read with structured parsers. The following evidence covers
 # source structure, grain, formats, keys, missing values and overlap.
-# 
 
-# In[2]:
+
+# In[3]:
 
 
 # --- Section 0.1: environment ---
 import json
 import re                            # field values only, never document structure
 import sys
-import xml.etree.ElementTree as ET   # structured parser; the specification forbids regex on structure
+import xml.etree.ElementTree as ET   # structured parser, never regex on structure
 from io import StringIO
 
 import pandas as pd
@@ -84,7 +142,10 @@ LINE_ENDING = '\n'
 print('dictionary', len(dd), 'target fields across', dd.output_table.nunique(), 'tables')
 
 
-# In[3]:
+# ### 1.1 JSON structure and profile
+
+
+# In[4]:
 
 
 with open(JSON_PATH, "r", encoding="utf-8") as f:
@@ -94,21 +155,21 @@ print("Top-level keys :", list(raw_json.keys()))
 print("Export metadata:", raw_json["exportMetadata"])
 
 for key in ["customerProfiles", "orders", "productReviews"]:
-    # print(f"{key} {len(raw_json[key])} records")
     print(f"{key:18s} {len(raw_json[key]):,} records")
-    # ":18s" means "left-justify in a field 18 characters wide", and ">6," means "right-justify in a field 6 characters wide, with commas as thousands separators"
-    # why not just use f"{len(raw_json[key]):,}"? Because that would right-justify in a field only as wide as the number itself, which is less readable when the numbers have different lengths. This way, the numbers line up nicely in a column.
 
 # One order shows the nesting: a flat header, a repeated cart, a single delivery.
-# "grain" comes from 'public_data_dictionary.csv' and means "the level of detail represented by one row of the table".
+# "grain" is the dictionary's word for the level of detail one row represents.
 first_order = raw_json["orders"][0]
 print("\nAn order contains:", list(first_order.keys()))
-print("  header       ->", len(first_order["header"]), "fields  (grain: one row per order)")
-print("  shoppingCart ->", len(first_order["shoppingCart"]), "items   (grain: one row per order item)")
-print("  delivery     ->", len(first_order["delivery"]), "fields  (grain: one row per order)")
+print("  header       ->", len(first_order["header"]),
+      "fields  (grain: one row per order)")
+print("  shoppingCart ->", len(first_order["shoppingCart"]),
+      "items   (grain: one row per order item)")
+print("  delivery     ->", len(first_order["delivery"]),
+      "fields  (grain: one row per order)")
 
 
-# In[4]:
+# In[5]:
 
 
 def to_snake(name, exceptions=None):
@@ -141,7 +202,7 @@ def check_names(tables, dictionary_path):
         print("   target field with no source key:", sorted(target[name] - cols) or "none")
 
 
-# In[5]:
+# In[6]:
 
 
 def parse_json(path, exceptions=None):
@@ -178,7 +239,7 @@ def parse_json(path, exceptions=None):
     return tables, raw["exportMetadata"]
 
 
-# In[6]:
+# In[7]:
 
 
 # Two passes: the general naming rule alone, then the exceptions its output justifies.
@@ -187,7 +248,7 @@ naive_tables, _ = parse_json(JSON_PATH)
 check_names(naive_tables, DICT_PATH)
 
 # Written from the report above, not before it.
-NAME_RULE_FIXES = {"prior12MOrders": "prior_12m_orders"}   # regex splits on capitals, not digits
+NAME_RULE_FIXES = {"prior12MOrders": "prior_12m_orders"}   # splits on capitals, not digits
 RAW_TEXT_FIELDS = {"customerNote": "customer_note_raw",    # target field is the *clean* version
                    "reviewText":   "review_body_raw"}
 JSON_NAME_EXCEPTIONS = {**NAME_RULE_FIXES, **RAW_TEXT_FIELDS}
@@ -201,13 +262,12 @@ for name, df in json_tables.items():
     print(f"{name:16s} {df.shape[0]:,} rows x {df.shape[1]:>2} cols")
 
 
-# In[7]:
+# In[8]:
 
 
 # The dictionary declares the primary key of every output table: the field at position 1.
 # Read it rather than retyping it, so the notebook and the dictionary cannot drift apart.
-# Whether each declared key is *actually* unique in the data is tested in Section 1.3c.
-DICTIONARY = pd.read_csv(DICT_PATH, keep_default_na=False)
+# Whether each declared key is *actually* unique in the data is tested in Section 1.3.
 DECLARED_KEYS = (DICTIONARY[DICTIONARY.position == 1]
                  .set_index("output_table")["field_name"].to_dict())
 print(DECLARED_KEYS)
@@ -241,16 +301,17 @@ for name, df in json_tables.items():
 print(json_tables["orders"][["order_timestamp", "order_price", "coupon_discount",
                              "expedited_delivery", "currency"]].head(3).to_string(index=False))
 print()
-print(json_tables["deliveries"][["dispatch_date", "delivered_date", "on_time_in_full"]].head(3).to_string(index=False))
+print(json_tables["deliveries"][["dispatch_date", "delivered_date", "on_time_in_full"]]
+      .head(3).to_string(index=False))
 print()
 print("dtypes (orders):")
 print(json_tables["orders"].dtypes.to_string())
 
 
 # ### 1.2 XML structure and profile
-# 
 
-# In[8]:
+
+# In[9]:
 
 
 root = ET.parse(XML_PATH).getroot()
@@ -264,15 +325,18 @@ for child in root:
 # One order, to show the nesting. Compare with the JSON: same three parts, different names.
 order = root.find("Orders/Order")
 print("\nAn Order contains:", [part.tag for part in order])
-print("  Header        ->", len(list(order.find("Header"))), "fields  (grain: one row per order)")
-print("  Shopping_Cart ->", len(order.findall("Shopping_Cart/Item")), "Item(s) (grain: one row per order item)")
-print("  Delivery      ->", len(list(order.find("Delivery"))), "fields  (grain: one row per order)")
+print("  Header        ->", len(list(order.find("Header"))),
+      "fields  (grain: one row per order)")
+print("  Shopping_Cart ->", len(order.findall("Shopping_Cart/Item")),
+      "Item(s) (grain: one row per order item)")
+print("  Delivery      ->", len(list(order.find("Delivery"))),
+      "fields  (grain: one row per order)")
 
 # WarehouseDirectory has no matching output table. Noted now so it is not silently dropped.
 print("\nWarehouse fields:", [f.tag for f in root.find("WarehouseDirectory/Warehouse")])
 
 
-# In[9]:
+# In[10]:
 
 
 def element_to_record(element, exceptions=None):
@@ -311,8 +375,8 @@ def parse_xml(path, exceptions=None):
                                          for p in root.findall("ProductCatalogue/Product")]),
         "product_reviews": pd.DataFrame([element_to_record(r, exceptions)
                                          for r in root.findall("ProductReviews/Review")]),
-        "warehouses":      pd.DataFrame([element_to_record(w, exceptions)
-                                         for w in root.findall("WarehouseDirectory/Warehouse")]),
+        "warehouses":      pd.DataFrame([element_to_record(w, exceptions) for w in
+                                         root.findall("WarehouseDirectory/Warehouse")]),
     }
     for df in tables.values():
         df.insert(0, "source_system", "XML")
@@ -322,14 +386,14 @@ def parse_xml(path, exceptions=None):
     return tables, metadata
 
 
-# In[10]:
+# In[11]:
 
 
 naive_xml, _ = parse_xml(XML_PATH)
 check_names(naive_xml, DICT_PATH)
 
 
-# In[11]:
+# In[12]:
 
 
 # Written from the pass-1 report above, not before it. Keys are original tags.
@@ -340,7 +404,7 @@ XML_NAME_EXCEPTIONS = {
 }
 
 
-# In[12]:
+# In[13]:
 
 
 xml_tables, xml_meta = parse_xml(XML_PATH, XML_NAME_EXCEPTIONS)
@@ -352,11 +416,12 @@ for name, df in xml_tables.items():
     print(f"{name:16s} {df.shape[0]:,} rows x {df.shape[1]:>2} cols")
 
 
-# In[13]:
+# In[14]:
 
 
-# The same profile function as Section 1.1, run on the XML — deliberately identical so Section 1.3 can put
-# the two profiles side by side. `warehouses` is absent because it is not an output table.
+# The same profile function as Section 1.1, run on the XML — deliberately identical so
+# Section 1.3 can put the two profiles side by side. `warehouses` is absent because it
+# is not an output table.
 profile(xml_tables, "XML")
 
 for name, df in xml_tables.items():
@@ -367,14 +432,16 @@ for name, df in xml_tables.items():
 
 # The formats themselves — the evidence behind every normalisation rule in Section 1.3.
 print(xml_tables["orders"][["order_timestamp", "order_price", "delivery_charges",
-                            "coupon_discount", "expedited_delivery"]].head(3).to_string(index=False))
+                            "coupon_discount", "expedited_delivery"]]
+      .head(3).to_string(index=False))
 print()
-print(xml_tables["products"][["unit_price", "launch_date", "recyclable_packaging"]].head(3).to_string(index=False))
+print(xml_tables["products"][["unit_price", "launch_date", "recyclable_packaging"]]
+      .head(3).to_string(index=False))
 print()
 print("Every XML column arrives as text:", xml_tables["orders"].dtypes.unique())
 
 
-# In[14]:
+# In[15]:
 
 
 # --- Section 1.2: preconditions on the two parsed sets ---
@@ -394,12 +461,12 @@ for source, tabs in (('JSON', json_tables), ('XML', xml_tables)):
 
 
 # ### 1.3 Source comparison and assumptions
-# 
+#
 # Comparable values are normalised before overlap is assessed. Required keys come
 # from the public dictionary and are checked against the observed data.
-# 
 
-# In[15]:
+
+# In[16]:
 
 
 print("JSON tables:", sorted(json_tables))
@@ -418,7 +485,8 @@ for name in sorted(set(json_tables) & set(xml_tables)):
 # This is the format evidence for A1.
 
 sample_id = sorted(set(json_tables["orders"].order_id) & set(xml_tables["orders"].order_id))[0]
-fields = ["order_timestamp", "order_price", "coupon_discount", "expedited_delivery", "coupon_code"]
+fields = ["order_timestamp", "order_price", "coupon_discount",
+          "expedited_delivery", "coupon_code"]
 
 side_by_side = pd.DataFrame({
     "JSON": json_tables["orders"].set_index("order_id").loc[sample_id, fields],
@@ -428,146 +496,106 @@ print("Order", sample_id)
 side_by_side
 
 
-# In[16]:
-
-
-def norm_money(value):
-    """'AUD 2,765.47' or 2765.47 -> 2765.47"""
-    return round(float(str(value).replace("AUD", "").replace(",", "").strip()), 2)
-
-def norm_percent(value):
-    """'10%' or 10 -> 10.0"""
-    return float(str(value).replace("%", "").strip())
-
-def norm_bool(value):
-    """'Y' / 'N' / True / False -> bool"""
-    return str(value).strip().lower() in {"y", "yes", "true"}
-
-def norm_datetime(value, dayfirst):
-    """Text date or timestamp -> pandas Timestamp. `dayfirst` is True for XML, False for JSON."""
-    return pd.to_datetime(str(value).strip(), dayfirst=dayfirst, errors="coerce")
-
-# Which normaliser applies to which column, used by the comparison below.
-# `date` and `datetime` parse identically but are written out differently, so they are
-# separate categories here rather than one.
-NORMALISERS = {
-    "orders":      {"money":   ["order_price", "delivery_charges", "tax_amount", "order_total"],
-                    "percent": ["coupon_discount"],
-                    "bool":    ["expedited_delivery"],
-                    "datetime":["order_timestamp"],
-                    "number":  ["customer_lat", "customer_long"]},
-    "order_items": {"money":   ["unit_price", "line_revenue"],
-                    "number":  ["quantity"]},
-    "deliveries":  {"money":   ["delivery_cost"],
-                    "bool":    ["on_time_in_full", "signature_required"],
-                    "date":    ["dispatch_date", "promised_date", "delivered_date"],
-                    "number":  ["delay_days", "fulfilment_hours", "promised_days",
-                                "tracking_event_count", "shipping_distance_km",
-                                "estimated_carbon_kg"]},
-    "product_reviews": {"bool":    ["verified_purchase"],
-                        "datetime":["review_timestamp"],
-                        "number":  ["rating", "helpful_votes"]},
-}
-
-def normalise(series, column, spec, dayfirst):
-    """Apply the right normaliser to one column. Anything unlisted is compared as text."""
-    if column in spec.get("money", []):     return series.map(norm_money)
-    if column in spec.get("percent", []):   return series.map(norm_percent)
-    if column in spec.get("bool", []):      return series.map(norm_bool)
-    if column in spec.get("date", []) or column in spec.get("datetime", []):
-        return series.map(lambda v: norm_datetime(v, dayfirst))
-    if column in spec.get("number", []):    return series.astype(float)
-    return series.astype(str)
-
-
 # In[17]:
 
 
-def normaliser_gaps():
-    """Every typed dictionary field that no normaliser covers.
+# --- Section 1.3: the normalisation plan, derived from the dictionary ---
+# The two files spell the same value differently, so overlap can only be judged after both
+# sides are put in one form. Which form each field needs is read from the dictionary rather
+# than typed out: `data_type` separates date from datetime and boolean from text, and
+# `comparison_rule` is what marks a money field, because the dictionary types money and
+# plain numbers alike as `number`. Section 4 applies this same plan, so the profiling and
+# the pipeline cannot drift apart.
 
-    `in_source = False` means the field is derived by the text functions and is correctly
-    absent here. `in_source = True` is a real gap.
+MONEY_RULE     = 'numeric tolerance 0.01'   # the dictionary's own marker for a money field
+PERCENT_FIELDS = {'coupon_discount'}        # the one thing the dictionary cannot express:
+                                            # the XML writes '10%', the contract says 'number'
+
+# Every column either source actually supplies, per table.
+SOURCE_COLUMNS = {}
+for tabs in (json_tables, xml_tables):
+    for name, df in tabs.items():
+        SOURCE_COLUMNS.setdefault(name, set()).update(df.columns)
+
+def normalisation_plan(table):
+    """Which normaliser each target field of one table needs.
+
+    A target field with no source column of that name is derived later by the text
+    functions, so it is correctly absent. String fields need no normaliser.
     """
-    source_columns = {}
-    for tables in (json_tables, xml_tables):
-        for name, df in tables.items():
-            source_columns.setdefault(name, set()).update(df.columns)
+    plan = {'money': [], 'percent': [], 'number': [],
+            'date': [], 'datetime': [], 'boolean': []}
+    for _, f in DICTIONARY[DICTIONARY.output_table == table].iterrows():
+        if f.field_name not in SOURCE_COLUMNS.get(table, set()):
+            continue
+        if f.data_type == 'number':
+            kind = ('money'   if f.comparison_rule == MONEY_RULE else
+                    'percent' if f.field_name in PERCENT_FIELDS  else 'number')
+        elif f.data_type in plan:
+            kind = f.data_type
+        else:
+            continue                        # string: compared and exported as text
+        plan[kind].append(f.field_name)
+    return {kind: fields for kind, fields in plan.items() if fields}
 
-    rows = []
-    for _, field in DICTIONARY[DICTIONARY.data_type != "string"].iterrows():
-        spec = NORMALISERS.get(field.output_table, {})
-        covered = any(field.field_name in cols for cols in spec.values())
-        if not covered:
-            rows.append({"table": field.output_table, "field": field.field_name,
-                         "type": field.data_type,
-                         "in_source": field.field_name in source_columns.get(field.output_table, set())})
-    return pd.DataFrame(rows)
+PLAN = {t: normalisation_plan(t) for t in DICTIONARY.output_table.unique()}
 
-normaliser_gaps()
+for table, plan in PLAN.items():
+    print(table)
+    for kind, fields in plan.items():
+        print(f'   {kind:9s} {fields}')
+
+# The typed fields the plan does not cover. Every one must be a field the text functions
+# derive; anything else here would be a normalisation that was missed.
+uncovered = [f'{t}.{f.field_name}'
+             for t in PLAN
+             for _, f in DICTIONARY[(DICTIONARY.output_table == t) &
+                                    (DICTIONARY.data_type != 'string')].iterrows()
+             if f.field_name not in SOURCE_COLUMNS.get(t, set())]
+print('\ntyped fields with no source column, derived in Section 4:', uncovered)
 
 
 # In[18]:
 
 
-# Written from the gap report above, not before it.
-NORMALISERS["products"] = {
-    "money":    ["unit_price", "unit_cost"],
-    "bool":     ["recyclable_packaging", "active_flag"],
-    "date":     ["launch_date"],
-    "number":   ["launch_year", "warranty_months", "weight_kg"],
-}
-NORMALISERS["customers"] = {
-    "money":    ["lifetime_value_before_period"],
-    "bool":     ["marketing_consent"],
-    "date":     ["signup_date"],
-    "number":   ["prior_12m_orders"],
-}
+# --- Section 1.3: the normalisers ---
+# Values stay typed from here to Section 7 (Timestamps, floats, bools) and are formatted to
+# the published string forms only at export.
 
-gaps = normaliser_gaps()
-print("remaining gaps in a source column:", int(gaps.in_source.sum()) if len(gaps) else 0)
-print(gaps.to_string(index=False) if len(gaps) else "none")
+def norm_money(value):
+    """'AUD 2,765.47' or 2765.47 -> 2765.47. The thousands comma appears on only some
+    values, so it is stripped rather than matched."""
+    return round(float(str(value).replace('AUD', '').replace(',', '').strip()), 2)
+
+def norm_percent(value):
+    """'10%' or 10 -> 10.0. Percentage points, so the arithmetic divides by 100."""
+    return float(str(value).replace('%', '').strip())
+
+def norm_bool(value):
+    """'Y' / 'N' / true / false -> bool. Anything unrecognised becomes False, so Section 6
+    checks that no boolean source column is ever blank."""
+    return str(value).strip().lower() in {'y', 'yes', 'true'}
+
+def norm_temporal(series, dayfirst):
+    """Text -> Timestamp. `dayfirst` is True for the XML and False for the JSON.
+    Vectorised: calling pd.to_datetime per element pays the parser start-up cost per row."""
+    return pd.to_datetime(series.astype(str).str.strip(), dayfirst=dayfirst, errors='coerce')
+
+def normalise_frame(df, table, dayfirst):
+    """Apply the derived plan to one source's frame."""
+    out = df.copy()
+    for kind, fields in PLAN.get(table, {}).items():
+        for f in fields:
+            if kind == 'money':      out[f] = out[f].map(norm_money)
+            elif kind == 'percent':  out[f] = out[f].map(norm_percent)
+            elif kind == 'boolean':  out[f] = out[f].map(norm_bool)
+            elif kind == 'number':   out[f] = pd.to_numeric(out[f], errors='coerce')
+            elif kind in ('date', 'datetime'):
+                out[f] = norm_temporal(out[f], dayfirst)
+    return out
 
 
 # In[19]:
-
-
-# --- 1.3b Cross-check: the same plan, derived from the dictionary ---
-
-MONEY_RULE     = "numeric tolerance 0.01"
-PERCENT_FIELDS = {"coupon_discount"}   # one source writes '10%'; the dictionary only says 'number'
-
-def plan_from_dictionary(table):
-    """The normalisation plan the data dictionary implies for one table."""
-    plan = {"money": [], "number": [], "date": [], "datetime": [], "bool": []}
-    for _, field in DICTIONARY[DICTIONARY.output_table == table].iterrows():
-        if field.data_type == "number":
-            bucket = "money" if field.comparison_rule == MONEY_RULE else "number"
-            plan[bucket].append(field.field_name)
-        elif field.data_type == "boolean":
-            plan["bool"].append(field.field_name)
-        elif field.data_type in plan:
-            plan[field.data_type].append(field.field_name)
-
-    # The dictionary has no percent type: it describes the target, not the source spelling.
-    plan["percent"] = [f for f in plan["number"] if f in PERCENT_FIELDS]
-    plan["number"]  = [f for f in plan["number"] if f not in PERCENT_FIELDS]
-
-    # A derived field has a target type but no source column to normalise.
-    in_source = set().union(*(set(t[table].columns)
-                              for t in (json_tables, xml_tables) if table in t))
-    return {kind: sorted(f for f in fields if f in in_source)
-            for kind, fields in plan.items() if any(f in in_source for f in fields)}
-
-for table, hand_written in NORMALISERS.items():
-    derived = plan_from_dictionary(table)
-    assert {k: sorted(v) for k, v in hand_written.items()} == derived, (table, derived)
-
-print("hand-written map and dictionary-derived plan agree on all",
-      len(NORMALISERS), "tables")
-
-
-# In[20]:
 
 
 def candidate_keys(tables, top=3):
@@ -594,7 +622,7 @@ print()
 print("XML");  print(candidate_keys(xml_tables).to_string(index=False))
 
 
-# In[21]:
+# In[20]:
 
 
 # Four questions decide between two columns that are unique to the same degree.
@@ -624,10 +652,11 @@ print("\n4. is either column derived from the other?")
 stem = orders_all[B].str.rsplit("-", n=1).str[0]
 print(f"   distinct {B} stems: {sorted(stem.unique())}")
 rebuilt = stem + "-" + orders_all[A].str[4:]
-print(f"   rows where {B} == stem + {A}[4:]: {int((rebuilt == orders_all[B]).sum()):,} of {len(orders_all):,}")
+print(f"   rows where {B} == stem + {A}[4:]: "
+      f"{int((rebuilt == orders_all[B]).sum()):,} of {len(orders_all):,}")
 
 
-# In[22]:
+# In[21]:
 
 
 # The scan above confirms every declared key, so KEYS is the dictionary's own list.
@@ -672,7 +701,7 @@ print()
 print("XML");  print(duplicate_shape(xml_tables).to_string(index=False))
 
 
-# In[23]:
+# In[22]:
 
 
 def parent_pools(*table_sets):
@@ -719,7 +748,7 @@ for name, key in KEYS.items():
 pd.DataFrame(overlap)
 
 
-# In[24]:
+# In[23]:
 
 
 def compare_shared_records(name, key, normalised=True):
@@ -728,19 +757,22 @@ def compare_shared_records(name, key, normalised=True):
     `normalised=False` compares the raw strings, which is the wrong way round and is shown
     only so the difference between a format difference and a real conflict is on the page.
     """
-    spec = NORMALISERS.get(name, {})
-    j = json_tables[name].drop_duplicates(key).set_index(key)
-    x = xml_tables[name].drop_duplicates(key).set_index(key)
+    typed = {f for fields in PLAN.get(name, {}).values() for f in fields}
+    j = json_tables[name]
+    x = xml_tables[name]
+    if normalised:
+        j = normalise_frame(j, name, dayfirst=False)
+        x = normalise_frame(x, name, dayfirst=True)
+    j = j.drop_duplicates(key).set_index(key)
+    x = x.drop_duplicates(key).set_index(key)
     shared = sorted(set(j.index) & set(x.index))
     columns = sorted((set(j.columns) & set(x.columns)) - {"source_system"})
 
     conflicts = {}
     for col in columns:
-        if normalised:
-            a = normalise(j.loc[shared, col], col, spec, dayfirst=False)
-            b = normalise(x.loc[shared, col], col, spec, dayfirst=True)
-        else:
-            a, b = j.loc[shared, col].astype(str), x.loc[shared, col].astype(str)
+        a, b = j.loc[shared, col], x.loc[shared, col]
+        if not normalised or col not in typed:     # compared as written
+            a, b = a.astype(str), b.astype(str)
         rows = int((a.values != b.values).sum())
         if rows:
             conflicts[col] = rows
@@ -750,24 +782,26 @@ def compare_shared_records(name, key, normalised=True):
 
 in_both = [(n, k) for n, k in KEYS.items() if n in json_tables and n in xml_tables]
 print("BEFORE normalisation")
-print(pd.DataFrame([compare_shared_records(n, k, normalised=False) for n, k in in_both]).to_string(index=False))
+print(pd.DataFrame([compare_shared_records(n, k, normalised=False)
+                    for n, k in in_both]).to_string(index=False))
 print("\nAFTER normalisation")
-print(pd.DataFrame([compare_shared_records(n, k, normalised=True) for n, k in in_both]).to_string(index=False))
+print(pd.DataFrame([compare_shared_records(n, k, normalised=True)
+                    for n, k in in_both]).to_string(index=False))
 
 
 # #### Assumptions
-# 
+#
 # - Customer records occur only in JSON and product records only in XML.
 # - Shared records are reconciled by business key after field normalisation.
 # - Different non-missing values for a shared key are reported as conflicts.
 # - Dates use the source-specific formats demonstrated above.
 # - Monetary and derived fields follow the published formulas and tolerance.
-# 
+
 
 # ### 1.4 Source grain and requirement coverage
-# 
 
-# In[25]:
+
+# In[24]:
 
 
 def grain(tables, source):
@@ -795,7 +829,8 @@ print(grain(xml_tables, "XML").to_string(index=False))
 
 # Where the raw maximum comes from: the sizes above 5 are each double a size at or below 5.
 print("\nraw rows per order, JSON:")
-print(json_tables["order_items"].groupby("order_id").size().value_counts().sort_index().to_string())
+print(json_tables["order_items"].groupby("order_id").size()
+      .value_counts().sort_index().to_string())
 
 print()
 for source, tabs in (("JSON", json_tables), ("XML", xml_tables)):
@@ -805,13 +840,13 @@ for source, tabs in (("JSON", json_tables), ("XML", xml_tables)):
 
 
 # ## 2. Source-to-target mapping
-# 
+#
 # The supplied mapping structure is completed from observed source paths and the
 # public dictionary. The final checks require every target row, preserve dictionary
 # order and reject blank or placeholder entries.
-# 
 
-# In[26]:
+
+# In[25]:
 
 
 # Every place a scalar value actually sits, in each file.
@@ -843,7 +878,7 @@ xml_paths = set(xml_leaves(root))
 print(f"leaf paths — JSON {len(json_paths)}, XML {len(xml_paths)}")
 
 
-# In[27]:
+# In[26]:
 
 
 def flat_name(name):
@@ -903,7 +938,7 @@ MAPPING_PATHS.pivot_table(index="output_table", columns="source_format",
                           values="target_field", aggfunc="count", fill_value=0)
 
 
-# In[28]:
+# In[27]:
 
 
 # "derived" is not declared anywhere above: it is simply what is left when no field of
@@ -922,7 +957,7 @@ assert (positions.values == DICTIONARY.position.values).all()
 print("\nrow numbers match the dictionary's field positions")
 
 
-# In[29]:
+# In[28]:
 
 
 # The one declared thing: which raw field feeds each derived target. Everything below is
@@ -942,7 +977,8 @@ DERIVED_SOURCE = {
     "extracted_product_sku":      "reviewText",
 }
 
-# Same lookup as Section 2.1: flatten the casing, then keep the candidate under this table's anchor.
+# Same lookup as Section 2.1: flatten the casing, then keep the candidate under this
+# table's anchor.
 for position, row in MAPPING_PATHS.iterrows():
     if row.source_format != "derived":
         continue
@@ -967,7 +1003,7 @@ print("\nfan-out, raw field -> number of derived targets:")
 print(derived.target_field.map(DERIVED_SOURCE).value_counts().to_string())
 
 
-# In[30]:
+# In[29]:
 
 
 # --- Section 2.3: the transformation column ---
@@ -1118,7 +1154,7 @@ print(MAPPING_PATHS.loc[~MAPPING_PATHS.set_index(['output_table', 'target_field'
       .str.slice(0, 40).value_counts().to_string())
 
 
-# In[31]:
+# In[30]:
 
 
 # --- Section 2.4: the overlap and conflict column ---
@@ -1168,7 +1204,7 @@ print(MAPPING_PATHS.groupby([MAPPING_PATHS.output_table,
       .size().to_string())
 
 
-# In[32]:
+# In[31]:
 
 
 # --- Section 2.5: evidence column, export, and the checks on the file ---
@@ -1196,30 +1232,32 @@ assert list(check.columns) == TEMPLATE_COLUMNS
 assert check.mapping_id.is_unique
 assert (check.mapping_id.str.extract(r'-(\d+)$')[0].astype(int).values
         == dd.position.values).all(), 'row order no longer matches the dictionary'
-assert list(zip(check.output_table, check.target_field)) == list(zip(dd.output_table, dd.field_name))
+assert (list(zip(check.output_table, check.target_field))
+        == list(zip(dd.output_table, dd.field_name)))
 
 for col in ['source_format', 'transformation_or_derivation',
             'overlap_or_conflict_rule', 'notebook_evidence']:
     assert (check[col].str.strip() != '').all(), f'{col} has a blank cell'
-    assert not check[col].str.contains('TODO', case=False).any(), f'{col} still has a placeholder'
+    assert not check[col].str.contains('TODO', case=False).any(), (
+        f'{col} still has a placeholder')
 
 pathless = check[(check.json_source_path == '') & (check.xml_source_path == '')]
 assert pathless.empty, pathless[['mapping_id', 'target_field']]
 
 print(f'{len(check)} rows, no blanks and no placeholders in any column')
 print(check.groupby('source_format').size().to_string())
-print('\nwritten to', mapping_file)
+print('\nwritten to', show(mapping_file))
 check.head(3)
 
 
 # ## 3. Text and regex functions
-# 
+#
 # The six required functions are imported from `Group001_text_functions.py` and
 # tested against both public and group-designed cases, including missing,
 # multilingual and malformed near-match inputs.
-# 
 
-# In[33]:
+
+# In[32]:
 
 
 # --- Section 3.1: import the published interface ---
@@ -1240,12 +1278,12 @@ from Group001_text_functions import (
 
 TEXT_FUNCTIONS = [clean_narrative_text, extract_order_reference, extract_product_sku,
                   extract_promo_code, build_latin_analysis, contains_non_latin_script]
-print('imported from', _hit)          # relative, so no personal path is stored in the output
+print('imported from', show(_hit))    # relative, so no personal path is stored in the output
 for fn in TEXT_FUNCTIONS:
     print(f'   {fn.__name__:28s} {fn.__doc__.strip().splitlines()[0]}')
 
 
-# In[34]:
+# In[33]:
 
 
 # --- Section 3.2: public and student-designed cases ---
@@ -1284,33 +1322,26 @@ print(f'\n{total} cases, {failed} failures')
 
 
 # ## 4. Build the six standardised relational tables
-# 
+#
 # Shared helpers normalise source values, compare duplicate records, retain one
 # canonical row per key, and conform each result to the dictionary. Helper columns
 # are removed before export.
-# 
-
-# In[35]:
 
 
-# --- Section 4.0 Read the published contract ---
-
-# The dictionary was read once in Section 0.1; this cell only displays it.
-
-print('shape  ', dd.shape)
-print('columns', dd.columns.tolist())
-print()
-print(dd['output_table'].value_counts().to_string())
-dd.head(12)
+# ### 4.0 Shared transformation rules
+#
+# Money uses decimal-style half-up rounding. Order items are built before orders
+# because canonical `order_price` is calculated from rounded line revenue.
 
 
-# In[36]:
+# In[34]:
 
 
 # --- Section 4.0 Contract lookups ---
 # Built once here so there is one reading of the dictionary, not six.
 
-OUTPUT_TABLES = ['orders', 'order_items', 'customers', 'deliveries', 'products', 'product_reviews']
+OUTPUT_TABLES = ['orders', 'order_items', 'customers',
+                 'deliveries', 'products', 'product_reviews']
 
 def contract(table):
     """The published contract for one output table, straight from the dictionary."""
@@ -1331,7 +1362,7 @@ for t in OUTPUT_TABLES:
     print(f"{t:16s} {len(c['fields']):>2} fields · pk = {c['pk']:<14s} · {c['grain']}")
 
 
-# In[37]:
+# In[35]:
 
 
 # --- Section 4.0 The target contract, table by table ---
@@ -1349,103 +1380,7 @@ for t in OUTPUT_TABLES:
     show_contract(t)
 
 
-# In[38]:
-
-
-# --- Section 4.0 Derive the normalisation plan from the dictionary ---
-# Money is not a data_type: the dictionary distinguishes it by comparison_rule, and date
-# from datetime by data_type. Deriving the plan means it cannot drift from the contract.
-
-MONEY_RULE = 'numeric tolerance 0.01'
-
-def normalisation_plan(table):
-    rows = dd.loc[dd['output_table'] == table]
-    plan = {'money': [], 'number': [], 'date': [], 'datetime': [], 'boolean': []}
-    for _, f in rows.iterrows():
-        if f.data_type == 'number':
-            plan['money' if f.comparison_rule == MONEY_RULE else 'number'].append(f.field_name)
-        elif f.data_type in plan:
-            plan[f.data_type].append(f.field_name)
-    return {k: v for k, v in plan.items() if v}      # drop empty categories
-
-PLAN = {t: normalisation_plan(t) for t in OUTPUT_TABLES}
-
-for t in OUTPUT_TABLES:
-    print(f'\n{t}')
-    for kind, fields in PLAN[t].items():
-        print(f'   {kind:9s} {fields}')
-
-
-# In[39]:
-
-
-# --- Section 4.0 Correct the derived plan ---
-# Two things the dictionary cannot express, written from the output above rather than
-# guessed: which fields have no source column, and which source spells a number with '%'.
-
-SOURCE_COLUMNS = {}
-for tabs in (json_tables, xml_tables):
-    for name, df in tabs.items():
-        SOURCE_COLUMNS.setdefault(name, set()).update(df.columns)
-
-PERCENT_FIELDS = {'coupon_discount'}   # XML writes '10%'; the contract only says 'number'
-
-for table, plan in PLAN.items():
-    for kind in list(plan):
-        plan[kind] = [f for f in plan[kind] if f in SOURCE_COLUMNS.get(table, set())]
-    plan['percent'] = [f for f in plan.pop('number', []) if f in PERCENT_FIELDS] or []
-    plan['number']  = [f for f in normalisation_plan(table).get('number', [])
-                       if f in SOURCE_COLUMNS.get(table, set()) and f not in PERCENT_FIELDS]
-    PLAN[table] = {k: v for k, v in plan.items() if v}
-
-for t in OUTPUT_TABLES:
-    print(f'\n{t}')
-    for kind, fields in PLAN[t].items():
-        print(f'   {kind:9s} {fields}')
-
-
-# In[40]:
-
-
-# --- Section 4.0.1 Normalisers ---
-# Values stay typed through Section 4 (Timestamps, floats, bools) and are formatted to the
-# published string forms only at export, in Section 7.
-
-def norm_money(value):
-    """'AUD 2,765.47' or 2765.47 -> 2765.47. The thousands comma appears on only some
-    values, so it is stripped rather than matched."""
-    return round(float(str(value).replace('AUD', '').replace(',', '').strip()), 2)
-
-def norm_percent(value):
-    """'10%' or 10 -> 10.0. Percentage points, so arithmetic divides by 100."""
-    return float(str(value).replace('%', '').strip())
-
-def norm_bool(value):
-    """'Y' / 'N' / True / False -> bool. Anything unrecognised becomes False silently,
-    so Section 6 should assert that no boolean source column is ever blank."""
-    return str(value).strip().lower() in {'y', 'yes', 'true'}
-
-def norm_temporal(series, dayfirst):
-    """Vectorised: pd.to_datetime already accepts a Series. Calling it per element pays
-    the parser start-up cost on every row — same result, ~100x slower."""
-    return pd.to_datetime(series.astype(str).str.strip(), dayfirst=dayfirst, errors='coerce')
-
-def normalise_frame(df, table, dayfirst):
-    """Apply the derived plan to one source's frame."""
-    plan = PLAN.get(table, {})
-    out = df.copy()
-    for kind, fields in plan.items():
-        for f in fields:
-            if kind == 'money':            out[f] = out[f].map(norm_money)
-            elif kind == 'percent':        out[f] = out[f].map(norm_percent)
-            elif kind == 'boolean':        out[f] = out[f].map(norm_bool)
-            elif kind in ('date', 'datetime'):
-                out[f] = norm_temporal(out[f], dayfirst)
-            elif kind == 'number':         out[f] = pd.to_numeric(out[f], errors='coerce')
-    return out
-
-
-# In[41]:
+# In[36]:
 
 
 # --- Section 4.0.1 Sanity check: normalise one table from both sources ---
@@ -1466,7 +1401,7 @@ print(pd.DataFrame({
 }).to_string())
 
 
-# In[42]:
+# In[37]:
 
 
 # --- Section 4.0.2 Pipeline helpers ---
@@ -1519,7 +1454,7 @@ def deduplicate(df, table):
     return out
 
 
-# In[43]:
+# In[38]:
 
 
 # --- Section 4.0.2 Pipeline helpers, continued ---
@@ -1546,13 +1481,7 @@ def row_flow(table, combined, final):
           f'   ({sum(per_source.values()) - len(final):,} removed)')
 
 
-# ### 4.0 Shared transformation rules
-# 
-# Money uses decimal-style half-up rounding. Order items are built before orders
-# because canonical `order_price` is calculated from rounded line revenue.
-# 
-
-# In[44]:
+# In[39]:
 
 
 # --- Section 4.0.3 Money rounding ---
@@ -1572,9 +1501,9 @@ def within_tolerance(a, b, atol=TOLERANCE):
 
 
 # ### 4.2 `order_items`
-# 
 
-# In[45]:
+
+# In[40]:
 
 
 # --- Section 4.2 order_items ---
@@ -1592,7 +1521,7 @@ print(f'   deduped {len(deduped):,}  ({len(combined) - len(deduped):,} removed)'
 deduped.head()
 
 
-# In[46]:
+# In[41]:
 
 
 # --- Section 4.2 line_revenue: recompute and reconcile ---
@@ -1607,7 +1536,7 @@ print(f'largest difference       {gap.max():.4f}')
 deduped['line_revenue'] = recomputed
 
 
-# In[47]:
+# In[42]:
 
 
 # --- Section 4.2 order_items: conform and report ---
@@ -1620,9 +1549,9 @@ order_items_final.head()
 
 
 # ### 4.1 `orders`
-# 
 
-# In[48]:
+
+# In[43]:
 
 
 # --- Section 4.1 orders: combine, deduplicate, rebuild the arithmetic ---
@@ -1632,15 +1561,17 @@ TABLE = 'orders'
 combined = mark_overlap(combine_sources(TABLE), TABLE)
 deduped  = deduplicate(combined, TABLE)
 
-# order_price is the sum of the canonical line revenues, so it is rebuilt from Section 4.2's output
-# rather than copied. Every order must have at least one item for this to be complete.
+# order_price is the sum of the canonical line revenues, so it is rebuilt from
+# Section 4.2's output rather than copied. Every order must have at least one item
+# for this to be complete.
 line_totals = order_items_final.groupby('order_id')['line_revenue'].sum().round(2)
 assert deduped['order_id'].isin(line_totals.index).all(), 'orders with no items'
 
 rebuilt = pd.DataFrame({'order_price': deduped['order_id'].map(line_totals)})
 rebuilt['tax_amount']  = money_round(rebuilt['order_price'] / 11)
-rebuilt['order_total'] = money_round(rebuilt['order_price'] * (1 - deduped['coupon_discount'] / 100)
-                                     + deduped['delivery_charges'])
+rebuilt['order_total'] = money_round(
+    rebuilt['order_price'] * (1 - deduped['coupon_discount'] / 100)
+    + deduped['delivery_charges'])
 
 print(f'{TABLE}: recomputed vs source, tolerance {TOLERANCE}')
 for f in ['order_price', 'tax_amount', 'order_total']:
@@ -1652,12 +1583,12 @@ for f in rebuilt.columns:
     deduped[f] = rebuilt[f]
 
 
-# In[49]:
+# In[44]:
 
 
 # --- Section 4.1 orders: derived text fields, sentinels, conform ---
 
-# Two target fields come from one raw column via WP4. Provisional while the banner shows.
+# Two target fields are derived from one raw column by the published text functions.
 deduped['customer_note_clean'] = deduped['customer_note_raw'].map(clean_narrative_text)
 deduped['promo_code']          = deduped['customer_note_raw'].map(extract_promo_code)
 
@@ -1678,9 +1609,9 @@ orders_final.head()
 
 
 # ### 4.3 `customers`
-# 
 
-# In[50]:
+
+# In[45]:
 
 
 # --- Section 4.3 customers ---
@@ -1702,9 +1633,9 @@ customers_final.head()
 
 
 # ### 4.4 `deliveries`
-# 
 
-# In[51]:
+
+# In[46]:
 
 
 # --- Section 4.4 deliveries ---
@@ -1721,7 +1652,8 @@ row_flow(TABLE, combined, deliveries_final)
 
 # 1:1 with orders — same count, and order_id unique in both.
 print(f"\n   order_id unique      {deliveries_final['order_id'].is_unique}")
-print(f"   delay_reason 'none'  {int((deliveries_final['delay_reason'] == 'none').sum()):,} rows")
+none_rows = int((deliveries_final['delay_reason'] == 'none').sum())
+print(f"   delay_reason 'none'  {none_rows:,} rows")
 
 # Not cleaned, and the evidence is that cleaning would damage it: the column
 # holds two structured values, and clean_narrative_text alters all 5,000 rows
@@ -1734,9 +1666,9 @@ deliveries_final.head()
 
 
 # ### 4.5 `products`
-# 
 
-# In[52]:
+
+# In[47]:
 
 
 # --- Section 4.5 products ---
@@ -1755,13 +1687,14 @@ for kind, fields in PLAN[TABLE].items():
 deduped.head()
 
 
-# In[53]:
+# In[48]:
 
 
 # --- Section 4.5 products: derived field and conform ---
 
-# product_description_clean comes from WP4. Provisional while the placeholder banner shows.
-deduped['product_description_clean'] = deduped['product_description_raw'].map(clean_narrative_text)
+# product_description_clean is derived by the published cleaner in Section 3.1.
+deduped['product_description_clean'] = (deduped['product_description_raw']
+                                        .map(clean_narrative_text))
 
 products_marked = deduped
 products_final  = conform_to_contract(products_marked, TABLE)
@@ -1771,9 +1704,9 @@ products_final.head()
 
 
 # ### 4.6 `product_reviews`
-# 
 
-# In[54]:
+
+# In[49]:
 
 
 # --- Section 4.6 product_reviews ---
@@ -1806,7 +1739,7 @@ row_flow(TABLE, combined, product_reviews_final)
 product_reviews_final.head()
 
 
-# In[55]:
+# In[50]:
 
 
 # With the published functions in use, no column may be entirely the sentinel.
@@ -1822,12 +1755,12 @@ print(f'{len(dead)} all-sentinel columns across the six tables')
 
 
 # ## 5. Reconcile overlap and verify relationships
-# 
+#
 # The pre-deduplication frames show within-source repetition, cross-source overlap
 # and any non-missing field conflicts after normalisation.
-# 
 
-# In[56]:
+
+# In[51]:
 
 
 # --- Section 5: rebuild the pre-deduplication frames and compare the sources ---
@@ -1894,13 +1827,13 @@ print('within-source duplicate field differences:', WITHIN_DIFFS)
 
 
 # ## 6. Validation register
-# 
+#
 # Every executable check records a stable ID, PASS/FAIL status, observed result and
 # interpretation. Expected quantities are derived from the source or dictionary,
 # not hard-coded canonical answers.
-# 
 
-# In[57]:
+
+# In[52]:
 
 
 # --- Section 6.0: the register's inputs and helpers ---
@@ -1949,9 +1882,9 @@ for t in OUTPUT_TABLES:
 
 
 # ### 6.1 Schema, type and missing-value checks
-# 
 
-# In[58]:
+
+# In[53]:
 
 
 # --- Section 6.1 checks ---
@@ -1992,7 +1925,8 @@ empties = {f"{n}.{c}": int((T[n][c] == "").sum())
            for n in T
            for c in dd[(dd.output_table == n) & (dd.nullable == False)].field_name
            if (T[n][c] == "").any()}
-record("VAL-SCHEMA-10", not empties, f"empty cells in nullable=False fields: {empties or 'none'}")
+record("VAL-SCHEMA-10", not empties,
+       f"empty cells in nullable=False fields: {empties or 'none'}")
 
 # VAL-SCHEMA-11 — the six files carry the required names.
 # The names Section 7 will write, checked against the names the dictionary requires.
@@ -2000,13 +1934,14 @@ wanted = {f"{GROUP_ID}_{n}_standardised.csv" for n in dd.output_table.unique()}
 planned = {f"{GROUP_ID}_{n}_standardised.csv" for n in T}
 record("VAL-SCHEMA-11", wanted == planned,
        f"{len(wanted & planned)} of {len(wanted)} required filenames will be written; "
-       f"missing {sorted(wanted - planned) or 'none'}, unexpected {sorted(planned - wanted) or 'none'}")
+       f"missing {sorted(wanted - planned) or 'none'}, "
+       f"unexpected {sorted(planned - wanted) or 'none'}")
 
 
 # ### 6.2 Primary- and foreign-key checks
-# 
 
-# In[59]:
+
+# In[54]:
 
 
 # --- Section 6.2 checks ---
@@ -2016,7 +1951,8 @@ for name, key in PK.items():
     col = T[name][key]
     ok = col.is_unique and (col != "").all()
     record(f"VAL-PK-{name}", ok,
-           f"{col.nunique():,} different values in {len(col):,} rows, {int((col=='').sum())} blank")
+           f"{col.nunique():,} different values in {len(col):,} rows, "
+           f"{int((col=='').sum())} blank")
 
 # The eight foreign keys the spec lists, checked on the exported files.
 FK = [("VAL-FK-01", "orders", "customer_id", "customers", "customer_id"),
@@ -2043,9 +1979,9 @@ record("VAL-FK-09", len(d) == d.order_id.nunique() == len(T["orders"]),
 
 
 # ### 6.3 Source coverage and reconciliation checks
-# 
 
-# In[60]:
+
+# In[55]:
 
 
 # --- Section 6.3 checks ---
@@ -2069,15 +2005,18 @@ EXPECTED = {"orders": j_ord | x_ord, "order_items": j_item | x_item,
 
 for i, (name, keys) in enumerate(EXPECTED.items(), start=1):
     record(f"VAL-FLOW-{i:02d}", len(T[name]) == len(keys),
-           f"{name} has {len(T[name]):,} rows; the two files together hold {len(keys):,} different keys")
+           f"{name} has {len(T[name]):,} rows; "
+           f"the two files together hold {len(keys):,} different keys")
 
 # VAL-FLOW-07 — how many rows deduplication removed, worked out per source.
 raw_json_orders = [o["header"]["orderID"] for o in jdata["orders"]]
-raw_xml_orders  = [o.find("Header").find("Order_ID").text.strip() for o in xroot.iter("Order")]
+raw_xml_orders  = [o.find("Header").find("Order_ID").text.strip()
+                   for o in xroot.iter("Order")]
 removed_json = len(raw_json_orders) - len(set(raw_json_orders))
 removed_xml  = len(raw_xml_orders)  - len(set(raw_xml_orders))
 record("VAL-FLOW-07", removed_json == removed_xml,
-       f"deduplication removes {removed_json} rows from the JSON and {removed_xml} from the XML")
+       f"deduplication removes {removed_json} rows from the JSON "
+       f"and {removed_xml} from the XML")
 
 # VAL-FLOW-08 — every exported row traces back to a source row.
 untraced = {n: len(set(T[n][PK[n]]) - keys) for n, keys in EXPECTED.items()}
@@ -2100,7 +2039,8 @@ record("VAL-FLOW-14", per_order.max() == biggest_cart,
 joined = T["order_items"].merge(T["orders"][["order_id"]], on="order_id")
 record("VAL-FLOW-15", len(joined) == len(T["order_items"]),
        f"the join gives {len(joined):,} rows, the same as order_items; that is "
-       f"{len(joined)/len(T['orders']):.2f} times the {len(T['orders']):,} orders, which is what "
+       f"{len(joined)/len(T['orders']):.2f} times the {len(T['orders']):,} orders, "
+       f"which is what "
        f"an order total worked out after the join would be multiplied by")
 
 # VAL-FLOW-09 to -12 — the cross-source checks. In a personal notebook these could not
@@ -2130,9 +2070,9 @@ record("VAL-FLOW-12", observed_shared == expected_shared,
 
 
 # ### 6.4 Arithmetic and numeric-range checks
-# 
 
-# In[61]:
+
+# In[56]:
 
 
 # --- Section 6.4 checks ---
@@ -2223,9 +2163,9 @@ record("VAL-ARITH-07", chars_ok and words_ok,
 
 
 # ### 6.5 Temporal checks
-# 
 
-# In[62]:
+
+# In[57]:
 
 
 # --- Section 6.5 checks ---
@@ -2241,7 +2181,8 @@ dl["ordered"] = dl.order_id.map(order_time)
 late_dispatch = int((dl.ordered.dt.normalize() > dl.dispatch_date).sum())
 late_delivery = int((dl.dispatch_date > dl.delivered_date).sum())
 record("VAL-TIME-01", late_dispatch + late_delivery == 0,
-       f"dispatched before ordered: {late_dispatch}; delivered before dispatched: {late_delivery}")
+       f"dispatched before ordered: {late_dispatch}; "
+       f"delivered before dispatched: {late_delivery}")
 
 # VAL-TIME-02 — a review cannot exist before its order.
 rv = T["product_reviews"]
@@ -2251,20 +2192,19 @@ early = int((written < ordered).sum())
 record("VAL-TIME-02", early == 0, f"{early} reviews are dated before their order")
 
 # VAL-TIME-03 — a wrong dayfirst setting turns dates into blanks quietly.
-blanks = sum(int(dl[c].isna().sum()) for c in ["dispatch_date", "promised_date", "delivered_date"])
+blanks = sum(int(dl[c].isna().sum())
+             for c in ["dispatch_date", "promised_date", "delivered_date"])
 blanks += int(written.isna().sum())
 record("VAL-TIME-03", blanks == 0, f"{blanks} dates turned into blanks while being read")
 
 # VAL-TIME-04 — exported order years must equal the years derived from both raw sources.
 years = set(pd.to_datetime(T['orders'].order_timestamp).dt.year)
-raw_years = {
-    norm_datetime(value, dayfirst=dayfirst).year
-    for values, dayfirst in [
-        ([o['header']['orderTimestamp'] for o in jdata['orders']], False),
-        ([h.find('Order_Timestamp').text for h in xroot.iter('Header')], True),
-    ]
-    for value in values
-}
+raw_years = set()
+for values, dayfirst in [
+    ([o['header']['orderTimestamp'] for o in jdata['orders']], False),
+    ([h.find('Order_Timestamp').text for h in xroot.iter('Header')], True),
+]:
+    raw_years |= set(norm_temporal(pd.Series(values), dayfirst).dt.year)
 record('VAL-TIME-04', years == raw_years,
        f"exported order years {sorted(years)}; raw-source years {sorted(raw_years)}")
 
@@ -2274,9 +2214,9 @@ print(f"{'(context)':18s} INFO  {int((dl.delivered_date > dl.promised_date).sum(
 
 
 # ### 6.6 Text and multilingual checks
-# 
 
-# In[63]:
+
+# In[58]:
 
 
 # --- Section 6.6 checks ---
@@ -2303,14 +2243,19 @@ record("VAL-TEXT-01b", int(note.str.contains(NOISE).sum()) == 0,
 
 # VAL-TEXT-03 / -04 / -05 / -12 — shape checks. NaN is a valid answer for all of them.
 rv = T["product_reviews"]
-SHAPES = [("VAL-TEXT-03", rv.extracted_order_reference, r"[HC]ORD\d{6}|NaN", "extracted_order_reference"),
-          ("VAL-TEXT-04", rv.extracted_product_sku,     r"SKU-[A-Za-z0-9]+|NaN", "extracted_product_sku"),
-          ("VAL-TEXT-05", T["orders"].promo_code,       r"B[1-5]SAVE-\d{2}|NaN", "promo_code"),
-          ("VAL-TEXT-12", T["orders"].coupon_code,      r"B[1-5]SAVE-\d{2}|NaN", "coupon_code")]
+SHAPES = [("VAL-TEXT-03", rv.extracted_order_reference,
+           r"[HC]ORD\d{6}|NaN",     "extracted_order_reference"),
+          ("VAL-TEXT-04", rv.extracted_product_sku,
+           r"SKU-[A-Za-z0-9]+|NaN", "extracted_product_sku"),
+          ("VAL-TEXT-05", T["orders"].promo_code,
+           r"B[1-5]SAVE-\d{2}|NaN", "promo_code"),
+          ("VAL-TEXT-12", T["orders"].coupon_code,
+           r"B[1-5]SAVE-\d{2}|NaN", "coupon_code")]
 for vid, col, pattern, label in SHAPES:
     bad = int((~col.str.fullmatch(pattern)).sum())
     record(vid, bad == 0,
-           f"{label}: {bad} wrong shape; {int((col != 'NaN').sum()):,} of {len(col):,} filled in")
+           f"{label}: {bad} wrong shape; "
+           f"{int((col != 'NaN').sum()):,} of {len(col):,} filled in")
 
 # VAL-TEXT-06 — the codes must be pulled from the raw text, before cleaning removes them.
 still_there = int(rv.review_body_clean.str.contains(r"[HC]ORD\d{6}|SKU-[A-Za-z0-9]+").sum())
@@ -2354,21 +2299,29 @@ sentinel_ok = (latin[no_latin_left] == "NaN").all() if no_latin_left.any() else 
 
 record("VAL-TEXT-07", leaked == 0 and sentinel_ok,
        f"{leaked} rows keep a non-Latin letter; sentinel correct on the "
-       f"{int(no_latin_left.sum())} rows with no Latin letter; character types present: {kinds}")
+       f"{int(no_latin_left.sum())} rows with no Latin letter; "
+       f"character types present: {kinds}")
 
 # VAL-TEXT-08 — the flag must match the text. Polish, German and French use Latin
 # letters with accents and must stay False; this is where an ASCII test goes wrong.
 actual = rv.review_body_clean.map(has_non_latin_letter)
 flag = rv.contains_non_latin_script.map({"True": True, "False": False})
 wrong = int((flag != actual).sum())
-record('VAL-TEXT-08', wrong == 0,
-       f"{wrong} rows disagree; flag is True on {int(flag.sum())}, "
-       f"cleaned text contains non-Latin letters on {int(actual.sum())}")
+
+# The reviews an ASCII test would get wrong: non-ASCII characters, but every letter Latin.
+# Each one must be flagged False, so they are counted separately rather than folded in.
+accented = rv.review_body_clean.str.contains(r"[^\x00-\x7F]") & ~actual
+false_alarms = int(flag[accented].sum())
+record('VAL-TEXT-08', wrong == 0 and false_alarms == 0,
+       f"{wrong} rows disagree; flag is True on {int(flag.sum())}, cleaned text contains "
+       f"non-Latin letters on {int(actual.sum())}; {false_alarms} of {int(accented.sum()):,} "
+       f"accented-Latin reviews wrongly flagged")
 
 # VAL-TEXT-09 — 'none' is a real category, not a missing value.
 reason = T["deliveries"].delay_reason
 record("VAL-TEXT-09", (reason == "none").any(),
-       f"delay_reason is 'none' on {int((reason=='none').sum()):,} rows and was not turned into NaN")
+       f"delay_reason is 'none' on {int((reason=='none').sum()):,} rows "
+       f"and was not turned into NaN")
 
 # VAL-TEXT-10 — three fields hold one value only, so the completed filter removes nothing.
 single = {"orders.order_status": sorted(T["orders"].order_status.unique()),
@@ -2384,7 +2337,8 @@ both = (cc != "NaN") & (pc != "NaN")
 one_sided = int(len(cc) - both.sum() - ((cc == "NaN") & (pc == "NaN")).sum())
 disagree = int((cc[both] != pc[both]).sum())
 record("VAL-TEXT-13", disagree == 0 and one_sided == 0,
-       f"{int(both.sum()):,} rows have both and {disagree} disagree; {one_sided} rows have one but not the other")
+       f"{int(both.sum()):,} rows have both and {disagree} disagree; "
+       f"{one_sided} rows have one but not the other")
 
 mismatch = int((rv.extracted_order_reference != rv.order_id).sum())
 record("VAL-TEXT-14", mismatch == 0,
@@ -2397,9 +2351,9 @@ record("VAL-TEXT-15", mismatch == 0,
 
 
 # ### 6.7 Literal `NaN` checks
-# 
 
-# In[64]:
+
+# In[59]:
 
 
 # --- Section 6.7 checks ---
@@ -2426,7 +2380,7 @@ record("VAL-TEXT-11", not mixed,
        f"NaN counts {counts}; fields mixing an empty cell with the sentinel: {mixed or 'none'}")
 
 
-# In[65]:
+# In[60]:
 
 
 register = pd.DataFrame(RESULTS, columns=["id", "status", "evidence", "note"])
@@ -2437,19 +2391,19 @@ else:
     print(register.status.value_counts().to_dict())
     # Saved so the report can cite VAL- IDs from a file rather than from a screenshot.
     out_path = OUTPUT_DIR / f"{GROUP_ID}_validation_register.csv"
-    register.to_csv(out_path, index=False)
-    print(f"written -> {out_path}")
+    register.to_csv(out_path, index=False, lineterminator=LINE_ENDING)
+    print(f"written -> {show(out_path)}")
 
 register
 
 
 # ## 7. Export the six CSV files
-# 
+#
 # Each table is written in dictionary field order and read back to confirm its
 # schema, grain, primary key, values and platform-independent line endings.
-# 
 
-# In[66]:
+
+# In[61]:
 
 
 # --- Section 7: export the six CSV files ---
@@ -2481,11 +2435,11 @@ for name, df in TABLES_FINAL.items():
 
 
 # ## 8. Final reproducibility record
-# 
+#
 # The final cell reports versions, validation totals and generated artifacts.
-# 
 
-# In[67]:
+
+# In[62]:
 
 
 # --- Section 8: reproducibility record ---
@@ -2514,4 +2468,5 @@ print(f'\n{len(required)} required tables, the mapping and the validation regist
       f'recreated from the allocated raw files by this run.')
 print('No cell in this notebook reads a network resource, a private account or a file '
       'outside the submission.')
+
 
