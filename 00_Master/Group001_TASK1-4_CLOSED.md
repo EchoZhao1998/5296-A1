@@ -1,14 +1,14 @@
 # Tasks 1–4 — current state, 2 September 2026
 
-Supersedes the long 1 Sep version of this note. The feedback we got was that the
-notebook was over-engineered, and that A1 is marked against the specification and
-nothing else. Today's pass removed the parts that were not evidence for a
-specification requirement, folded in Jasmine's and Yandu's revisions, and re-ran
-everything. **No exported value changed.**
+"bababa" previous one was over-engineered, 
+now removed the parts that were not evidence for a
+specification requirement, 
+folded in Jasmine's and Yandu's revisions, 
+and re-ran everything. **No exported value changed.**
 
 ## What the notebook is now
 
-`Group001_solution.ipynb` — **89 cells, 61 code**, runs Restart-and-Run-All from a
+`Group001_solution.ipynb` — **91 cells, 61 code**, runs Restart-and-Run-All from a
 fresh kernel in about 30 seconds with 0 errors, and writes all eight files.
 
 | | |
@@ -68,10 +68,7 @@ Everything cut was work the notebook did **twice**, not evidence the marker want
 
 ## On the normalisation plan — whose version survived
 
-Both. The record is `wip_jasmine.ipynb` cell 19, which ends: *"Otherwise the plan I
-derived from the dictionary matches your hand-written map exactly — two independent
-routes to the same answer."* Jasmine did not reject the plan; she raised two
-corrections to the hand-written map, and both are still in force:
+Both. The record is `wip_jasmine.ipynb` cell 19, "bababa"
 
 - **`percent` cannot be derived** and must stay — the dictionary describes the target
   type, not how each file spells it. `PERCENT_FIELDS = {'coupon_discount'}` is still
@@ -124,7 +121,7 @@ mounts Drive, **finds** the allocated package by searching `MyDrive` for
 `00_Master/`, and writes the eight files into `00_Master/outputs/` on the drive. It stops
 with a clear message rather than guessing if the drive holds two copies of the package.
 
-Tested against a copy of our drive layout (`5196/G1_A1/` with `DATA/`, `00_Master/`,
+Tested against a copy of our drive layout (`5196/Group001_A1/` with `DATA/`, `00_Master/`,
 `02_Outputs/`) and against the two layouts a marker might use — package kept whole, and the
 submission unzipped flat. **All three produce the identical eight files**, and the Colab run
 leaves nothing behind in the session folder.
