@@ -5,7 +5,14 @@
 > `review/figures_0905/`. Two further problems were found only after the fixes were drawn —
 > Figure 6's intervals do **not** quite overlap (3.733 vs 3.730), and Figure 8's
 > helpful-votes panel needed an axis floor once the bars came off — and both are fixed.
-> Quote style and the coverage cell's long lines were deliberately left alone.
+>
+> **All eleven defects in section 4 are fixed, verified item by item against the notebook.**
+> Of section 5, items 1 and 4 are fixed; **three were deliberately left and are group
+> decisions, not oversights**: 5.2 quote style (converting Shawn's two cells risks working
+> code for zero marks), 5.3 the nine aligned long lines in the coverage cell, and 5.5 the
+> owner tags. Section 3 — the six unwritten findings, three MLQ rows, §1, §5 and References
+> — is untouched by design; that is the group's writing, not a bug.
+>
 > **This file is kept as the audit trail of what was wrong and why.** For what to do next,
 > read `Group001_handover_0905.md`.
 
