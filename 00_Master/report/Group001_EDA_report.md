@@ -86,7 +86,7 @@ Limitation: `line_revenue` reflects gross figures. Order-level coupon discounts 
 
 **Figure 3\.** Monthly revenue split into order count and order size. One row per order; all 5,000 orders of 2018\. 
 
-From orders alone, with no join. Three line panels stacked on one shared time axis, because revenue is the product of the other two and the question is which of them moves. Revenue barely moves. It stays between AUD 1.10m and 1.36m, varying 6.1% across the year. Neither half explains it: the number of orders varies 4.2% and the average order 4.0%, so they contribute about equally. Volume runs 384 to 443 orders a month. With roughly 417 a month, a 4% swing is what chance alone would produce, so no month stands out. One year gives no second cycle to compare against, so we can describe the shape but cannot call it seasonal. 
+From orders alone, with no join. Three line panels stacked on one shared time axis, because revenue is the product of the other two and the question is which of them moves. Revenue barely moves. It stays between AUD 1.10m and 1.36m, varying 6.1% across the year. Neither half explains it: the number of orders varies 4.2% and the average order 4.0%, so they contribute about equally. Volume runs 384 to 443 orders a month. One year gives no second cycle to compare against, so we can describe the shape but cannot call it seasonal. 
 
 * Figure 4 — Multivariate and operational
 
@@ -94,7 +94,7 @@ From orders alone, with no join. Three line panels stacked on one shared time ax
 
 **Figure 4\.** On-time rate by carrier, service level and warehouse, with 95% Wilson intervals (Wilson, 1927). One row per delivery; all 5,000 deliveries. 
 
-Deliveries joined to orders on order\_id, one to one, which is what supplies the warehouse. Dot-and-interval rather than bars, because the result is that these rates cannot be told apart and bars would invite the reader to rank them. On-time performance is 89.4% and barely moves. All 24 combinations of carrier, service level and warehouse fall between 81.8% and 95.8%. Express reaches 89.7% against Standard's 89.4%, a gap of 0.3 points on 901 Express deliveries, and it does not even buy a shorter promise: 5.03 promised days against 4.99.
+Deliveries joined to orders on order\_id, one to one, which is what supplies the warehouse and the delivery charge. Dot-and-interval rather than bars, because the result is that these rates cannot be told apart and bars would invite the reader to rank them. On-time performance is 89.4% and barely moves. All 24 combinations of carrier, service level and warehouse fall between 81.8% and 95.8%. Express reaches 89.7% against Standard's 89.4%, a gap of 0.3 points on 901 Express deliveries, and it does not even buy a shorter promise: 5.03 promised days against 4.99, at AUD 23.48 a delivery against Standard's AUD 12.17. 
 
 Some combinations do look different — the Express-minus-Standard gap runs from −10.0 to \+7.0 points. But every Express group holds fewer than 100 deliveries, against 151 to 470 for Standard. Groups that small move around on their own, so those gaps are not evidence of a carrier effect.
 
@@ -152,11 +152,11 @@ Among reviewed items, late deliveries do not have lower ratings: they average 3.
 
 * Finding 3
 
-Revenue is flat all year. It sits between AUD 1.10m and 1.36m every month, a spread of 6.1%. Orders per month and average order value both move about 4%, so neither one is driving it. With around 417 orders a month, a 4% swing is what you would get by chance, so no month is really different from the others. There may be seasonality we cannot see — 5,000 orders across twelve months is thin, and one year gives nothing to compare against. Until a second year exists, keep monthly targets flat. 
+Revenue is flat all year. At order grain across all 5,000 orders of 2018, monthly revenue sits between AUD 1.10m and 1.36m, a spread of 6.1%, and neither component drives it: order count varies 4.2% (384 to 443 a month) and mean order value 4.0%. Nothing in the twelve months reads as a peak to staff for or a trough to discount into. But the figure cannot rule seasonality out: one year gives no second cycle to compare against, and 5,000 orders over twelve months is thin. Keep monthly targets flat until a second year exists.   
 
 * Finding 4
 
-Nine in ten deliveries arrive on time — 89.4% of 5,000 — and nothing we can group by changes that. All 24 combinations of carrier, service level and warehouse land between 81.8% and 95.8%. Express gets 89.7% against Standard's 89.4% on the same five-day promise, so it costs more and delivers nothing extra. Some carriers show gaps of up to 10 points between Express and Standard, but every Express group has fewer than 100 deliveries against 151 to 470 for Standard, and groups that small bounce around on their own. Before renegotiating, check they run the same routes.  
+Nine in ten deliveries arrive on time — 89.4% of 5,000 — and nothing we can group by changes that. All 24 combinations of carrier, service level and warehouse land between 81.8% and 95.8%. Express is charged at AUD 23.48 a delivery against Standard's AUD 12.17, 93% more, for the same five-day promise (5.03 days against 4.99) and the same on-time rate (89.7% on 901 Express deliveries against 89.4% on 4,099). Some carriers show gaps of up to 10 points between the two, but every Express group holds fewer than 100 deliveries against 151 to 470 for Standard, and groups that small move on their own. The data holds what the customer pays, not what either service costs to run, and Express may cover harder routes — check both before touching the price.   
 
 * Finding 5
 
@@ -186,9 +186,9 @@ The deliveries table has five columns that all record whether a delivery was lat
 
 * MLQ-1 Will this order be delivered later than promised?
 
-*Classification · one order at placement · target: `on_time_in_full` · train on earlier months, test on later*
+*Classification · one order at placement · target: on\_time\_in\_full · train on earlier months, test on later*
 
-Figure 4 showed 528 of 5,000 deliveries late, and nothing we can group by tells them apart: all 24 carrier, service level and warehouse groups sit between 81.8% and 95.8%. The obvious features do not predict lateness, so a model would need something subtler. At placement we have the order timestamp, sales channel, service level, carrier, promised days, shipping distance, delivery cost, cart size and value, and the customer's earlier orders. It would flag orders before dispatch so we can warn the customer or hold capacity — worth doing on 528, not 5,000. Score on recall at a fixed alert budget. The main risk is leakage: `delay_days`, `on_time_in_full`, `delay_reason`, `delivery_note_clean` and `delivered_date` are all recorded after delivery and give away the answer.
+*Figure 4 showed 528 of 5,000 deliveries arrive late, and no grouping clearly separates them — all 24 carrier, service level and warehouse groups fall between 81.8% and 95.8% — so a model needs subtler signals. Flagging orders before dispatch would let us warn customers or hold capacity, focusing on 528 rather than 5,000. At placement we know the timestamp, channel, carrier, service level, promised days, shipping distance, delivery cost, cart size and value. Score on recall at a fixed alert budget. `delay_days`, `on_time_in_full`, `delay_reason`, `delivery_note_clean` and `delivered_date` are recorded after delivery and give the model the answer.*
 
 * MLQ-2 What will a returning customer spend on their next order?
 
@@ -216,17 +216,17 @@ The dataset contains 5,000 orders from 500 customers across 2018, providing repe
 
 # **6\. Limitations**
 
-**One merchant, one year, one state.** 5,000 orders placed in 2018 by 500 customers, all in Victoria, all in AUD. Seven columns hold the same value in every row — currency, order\_status, delivery\_status, tax\_category, verified\_purchase, home\_state and home\_country. One year also means seasonality cannot be separated from trend. Nothing here transfers to another region or year.
+**One merchant, one year, one state.** The data contains 5,000 orders placed in 2018 by 500 customers, all in Victoria and in AUD. Seven columns have the same value in every row — currency, order\_status, delivery\_status, tax\_category, verified\_purchase, home\_state and home\_country. Since the data covers only one year, we also cannot separate seasonal patterns from longer-term trends. These findings may therefore not apply to other regions or years.
 
-**The two source files probably came from the same system.** They never disagree on value: 3,259 keys appear in both files across the six tables, with zero field differences. In orders alone, though, 3,500 of the 10,000 values compared differed in format and none in content. Two systems recording separately would slip somewhere. The match proves nothing was damaged in transit; it does not prove either file is right, and we should not describe this as cross-validated.
+**The two source files probably came from the same system.** They never disagree on value: 3,259 keys appear in both files across the six tables, with zero field differences. In the orders table alone, 3,500 of the 10,000 values compared had different formats, but their content was the same. If two systems recorded the data separately, we would expect at least some differences. This match suggests nothing was damaged in transit, but it does not prove either file is correct, so we should not call this cross-validation.
 
-**Where we found no difference, that has a size.** Figures 3, 4 and 7 all report something that does not vary. In Figure 4, no Express group holds more than 100 deliveries, which puts the standard error on each one at three to five percentage points, so a gap of that size is not something this design can see. That is a good reason not to spend money on a change — it is not proof the change would do nothing.
+**Where we found no difference, the sample size matters.** Figures 3, 4 and 7 all show results with little or no variation. In Figure 4, no Express group has more than 100 deliveries, giving a standard error of around three to five percentage points. This means a difference of that size may be too small for this design to detect. That is a good reason not to spend money on a change, but it does not prove the change would have no effect.
 
-**Ratings only cover people who chose to write.** 7,000 reviews from 15,685 delivered items, at item grain, so one order can appear more than once. Findings 2, 7 and 8 describe reviewers, not customers, and the silent ones are exactly who a service-recovery programme would target.
+**Ratings only represent people who chose to write a review.** There are 7,000 reviews from 15,685 delivered items, measured at item level, so one order can appear more than once. Findings 2, 7 and 8 therefore describe reviewers rather than all customers. The customers who stayed silent may be exactly those a service-recovery programme would need to reach.
 
-**Nothing here shows cause.** Late deliveries score higher than on-time ones, 3.82 against 3.70. That is backwards, and it is the clearest sign that something unobserved sits behind both. A seller who ships slowly may also be one people rate generously, and we cannot hold that constant.
+**Nothing here proves cause and effect.** Late deliveries have a higher average rating than on-time deliveries, 3.82 compared with 3.70. This unexpected result suggests that some unobserved factor may influence both. For example, a seller who ships slowly may also be one that customers tend to rate generously, and we cannot control for that here.
 
-**Three pairs of columns say the same thing twice.** delivery\_note\_clean reproduces the delivery outcome; expedited\_delivery is service\_level re-encoded; delivery\_experience matches on\_time\_in\_full on all 7,000 rows. Each would hand a model the answer it is meant to predict, so every machine-learning question has to drop them deliberately rather than by luck.
+**Three pairs of columns contain the same information twice.** delivery\_note\_clean reproduces the delivery outcome; expedited\_delivery is service\_level re-encoded; and delivery\_experience matches on\_time\_in\_full across all 7,000 rows. Each could give a model the answer it is supposed to predict, so these columns must be deliberately removed from any machine-learning model.
 
 # **7\. Conclusion**
 
