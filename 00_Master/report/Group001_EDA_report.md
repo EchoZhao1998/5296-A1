@@ -148,7 +148,7 @@ At the line-item level (15,685 lines), high sales volume does not necessarily me
 
 * Finding 2
 
-Across 7,000 item-level reviews joined to deliveries, late shipments averaged 3.82 stars compared with 3.70 for on-time shipments—a 0.12-star difference (2.55 standard errors across 707 late reviews). Delivery delays do not drive lower ratings here, meaning service-recovery spending justified by review scores lacks data support. Selection bias provides the likely explanation: only 7,000 of 15,685 items received reviews. Management should evaluate non-reviewing customers before pricing a recovery program.
+Among reviewed items, late deliveries do not have lower ratings: they average 3.82 stars compared with 3.70 for on-time deliveries. This does not show that delays improve ratings or are harmless. Only reviewed items are observed, and unmeasured differences between orders or customers may explain the unexpected direction.
 
 * Finding 3
 
@@ -190,11 +190,11 @@ The deliveries table has five columns that all record whether a delivery was lat
 
 Figure 4 showed 528 of 5,000 deliveries late, and nothing we can group by tells them apart: all 24 carrier, service level and warehouse groups sit between 81.8% and 95.8%. The obvious features do not predict lateness, so a model would need something subtler. At placement we have the order timestamp, sales channel, service level, carrier, promised days, shipping distance, delivery cost, cart size and value, and the customer's earlier orders. It would flag orders before dispatch so we can warn the customer or hold capacity — worth doing on 528, not 5,000. Score on recall at a fixed alert budget. The main risk is leakage: `delay_days`, `on_time_in_full`, `delay_reason`, `delivery_note_clean` and `delivered_date` are all recorded after delivery and give away the answer.
 
-* MLQ-2 What will this basket be worth at checkout? ***\- 108w***
+* MLQ-2 What will a returning customer spend on their next order?
 
-*Regression · one order when the cart is opened · target: order\_total · temporal split with customer holdouts*
+*Regression · one returning customer’s next order · target: order\_total · temporal split*
 
-*Figure 2 shows that basket value depends more on product mix than item count: Laptops generate AUD 2.75m from 1,397 units, while Accessories generate AUD 0.56m from 3,051. A regression model could predict final order value from the active cart, customer history, segment, channel, and timing. The prediction could trigger free-delivery offers or bundle recommendations before checkout. Evaluate with MAE in dollars. Customer holdouts reduce buyer memorisation. To prevent leakage, exclude coupon\_discount, tax\_amount and order\_price, as they are components of order\_total available only after order completion.*
+*Figure 2 shows that order value varies strongly with product mix: Laptops generate AUD 2.75m from 1,397 units, while Accessories generate AUD 0.56m from 3,051. A regression model could predict a returning customer’s next order value from prior spending, purchase frequency, recency, category mix, channel history and segment. The prediction could support targeted recommendations or promotions before the next purchase. Evaluate with MAE against a customer’s historical-average baseline. To prevent leakage, all predictors must use only transactions before the target order; the target order’s items, price, discount and tax must be excluded.*
 
 * MLQ-3 Which delivered items will attract a rating of 2 or below?
 
@@ -208,11 +208,11 @@ Clustering · one customer · no target · stability checked on random subsets
 
 Figure 7 showed the four labels in customer\_segment only 1.5 standard errors apart on spend, while order frequency and basket size differ in opposite directions by about 2.4 each. The existing labels do not group people by how they buy. Data-driven groups would decide who gets an offer to order more often and who gets a bigger basket. Score on silhouette, and on whether the same customers regroup on random subsets. Risks: 500 customers may be too few for stable groups; features must be rescaled, or spend in the tens of thousands drowns an order count near ten; and groups that track postcode would price by address.
 
-* MLQ-5 What order volume should be planned for next month? ***\- 111w***
+* MLQ-5 Which customers will order again within the next 30 days?
 
-*Time-series forecasting · one month at national level · target: monthly order count · rolling-origin validation*
+*Classification · one customer after an order · target: repeat purchase within 30 days · temporal split*
 
-All 5,000 orders occur within 2018, with monthly volume ranging from 384 to 443 orders and no clear seasonal pattern. Forecasting future demand could support inventory, warehouse labour, and carrier-capacity planning. Historical order volume, channel mix, and promotional activity could be useful predictors, with performance compared against a simple baseline using Mean Absolute Percentage Error (MAPE). However, only 12 months of data are available, which is insufficient to establish a reliable seasonal pattern or robustly validate a monthly forecasting model. Additional years of data would be required before using the forecast for operational planning.
+The dataset contains 5,000 orders from 500 customers across 2018, providing repeated purchase histories that can predict short-term return behaviour. A classification model could use previous order frequency, recency, spending, category mix, channel history, and customer segment to identify customers likely to order again within 30 days. This could prioritise retention offers rather than targeting every customer. Evaluate using precision-recall AUC and recall at a fixed campaign budget. All predictors must precede the prediction date, and exclude orders in the final 30 days because their outcomes cannot be fully observed.
 
 # **6\. Limitations**
 
