@@ -78,7 +78,7 @@ Revenue and volume rankings are near-inverses:
 * **Accessories:** 1st in units (3,051), 10th in revenue (AUD 0.56m).
 
 **Category revenue is driven by unit price rather than sales volume.** Maintaining strict data grain is critical: summing `order_total` post-join yields AUD 52.7m against the true AUD 14.9m—a 3.53× inflation caused by duplicating order-level totals across individual item lines.  
-Limitation: `line_revenue` reflects gross figures. Order-level coupon discounts (AUD 1.62m total) reduce gross revenue from AUD 16.47m to AUD 14.92m invoiced. Because coupons apply as flat order-level percentages, attributing discounts to individual product categories requires unrecorded pro-rata assumptions.
+Limitation: `line_revenue` reflects gross figures. Order-level coupon discounts (AUD 1.62m total) reduce gross revenue from AUD 16.47m to AUD 14.85m invoiced. Because coupons apply as flat order-level percentages, attributing discounts to individual product categories requires unrecorded pro-rata assumptions.
 
 * Figure 3 — Temporal pattern
 
@@ -114,7 +114,7 @@ Figure 5 asks whether rating, review length and script are related. The unit is 
 
 This figure evaluates whether late deliveries attract lower ratings. The observation unit is one review, and the denominator is all 7,000 canonical product\_reviews joined to deliveries on order\_id to attach each review's delivery outcome. The join preserves all 7,000 rows because every review maps to exactly one delivery. Two means with their confidence intervals rather than bars, because the gap is small and its uncertainty is the finding.
 
-Late deliveries (n \= 707\) average 3.82 stars against 3.70 for on-time deliveries (n \= 6,293). The 0.12-star gap runs opposite to the expected direction and spans 2.55 standard errors: statistically detectable, but negligible on a 1–5 scale.
+Late deliveries (n \= 707\) average 3.82 stars against 3.70 for on-time deliveries (n \= 6,293). The 0.12-star gap is negligible on a 1–5 scale.
 
 Two limitations apply. First, lateness is measured once, not twice. product\_reviews.delivery\_experience looks like the customer's own account of the delivery, but it takes only the values delayed (707) and on\_time (6,293) and agrees with deliveries.on\_time\_in\_full on all 7,000 rows, so it is the operational outcome relabelled. Second, only 7,000 of 15,685 delivered items carry a review, so the figure describes reviewers and not customers.
 
