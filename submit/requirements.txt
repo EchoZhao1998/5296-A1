@@ -1,0 +1,5 @@
+# Group001 — A1. Runtime dependencies used by the submitted notebooks and text module.
+# Versions the submitted notebooks were last run against.
+pandas>=2.0
+matplotlib>=3.7
+regex>=2024.0.0
