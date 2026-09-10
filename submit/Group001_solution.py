@@ -1093,7 +1093,7 @@ BOTH_RULE = (
     'difference of source spelling is not read as a difference of value. A key whose two '
     'sources give different non-missing values for this field is recorded as a conflict in the '
     'validation register instead of being resolved by source precedence (Section 5, '
-    'VAL-FLOW-09, VAL-FLOW-10 and VAL-FLOW-12).')
+    'VAL-FLOW-09 to VAL-FLOW-12).')
 
 SINGLE_RULE = (
     'This table is supplied by the {src} file only, so no cross-source overlap exists for this '
@@ -1202,34 +1202,75 @@ for fn in TEXT_FUNCTIONS:
 # --- Section 3.2: public and student-designed cases ---
 import csv
 
-def run_cases(path):
-    """Run one test file in the published schema and report pass/fail per case."""
+FUNCTIONS_BY_NAME = {fn.__name__: fn for fn in TEXT_FUNCTIONS}
+
+def run_cases(cases, label):
+    """Run test-case dictionaries and report pass/fail per case."""
     failures = []
-    with open(path, newline='', encoding='utf-8') as fh:
-        cases = list(csv.DictReader(fh))
     for case in cases:
-        fn = {f.__name__: f for f in TEXT_FUNCTIONS}[case['function']]
+        fn = FUNCTIONS_BY_NAME[case['function']]
         actual = str(fn(case['input_value']))
         if actual != case['expected_output']:
             failures.append((case['case_id'], case['function'],
                              case['expected_output'], actual))
-    print(f"{path.name:44s} {len(cases) - len(failures):>3} / {len(cases):<3} pass")
+    print(f"{label:44s} {len(cases) - len(failures):>3} / {len(cases):<3} pass")
     for cid, fn, want, got in failures:
         print(f'   FAIL {cid} {fn}: expected {want!r}, got {got!r}')
     return len(cases), len(failures)
 
-CASE_FILES = [
+# The group's student-designed cases are embedded so the submitted notebook does
+# not depend on a CSV that is not part of the required ZIP contents.
+OWN_CASES_CSV = '''case_id,function,input_value,expected_output,purpose
+OWN-01,clean_narrative_text,[SYSTEM] <p>Leave at reception</p>,leave at reception,Matched: wrapper marker and tags removed
+OWN-02,clean_narrative_text,[SOURCE: web-form ™] [RATING: 4/5] #verified-buyer @store_support great product,great product,"Matched: every marker in the published closed set, in one value"
+OWN-03,clean_narrative_text,&lt;p&gt;caf&eacute; cr&egrave;me&lt;/p&gt;,café crème,"Matched: entities decode first, so the decoded tag is then removed; NFC applied"
+OWN-04,clean_narrative_text,<p>Refund of $25 + 10% = fair</p>,refund of $25 + 10% = fair,Unmatched: currency and maths symbols are not emoji and must survive
+OWN-05,clean_narrative_text,[RATING: 6/5] great,[rating: 6/5] great,"Near-match: the marker list is closed, so an out-of-range rating is not a marker"
+OWN-06,clean_narrative_text,PROMO: B9SAVE-24 leave at door,promo: b9save-24 leave at door,"Near-match: an invalid band is not a promotion code, so nothing is removed"
+OWN-07,clean_narrative_text,[VERIFIED_PURCHASE] 😊 <p></p> https://x.example/a,NaN,"Missing: nothing human-readable remains, so step 9 applies"
+OWN-08,clean_narrative_text,NaN,NaN,"Missing: the literal sentinel is treated as missing, not as text"
+OWN-09,clean_narrative_text,[SYSTEM] <p>很好 great</p>,很好 great,Multilingual: a valid review is not erased for containing non-Latin writing
+OWN-10,clean_narrative_text,Reference: HORD001451; SKU: SKU-VEL00108 done,done,Matched: the complete review reference wrapper including the separator
+OWN-11,extract_order_reference,reference: hord001451 ok,HORD001451,Matched: lower-case input returns an upper-case reference
+OWN-12,extract_order_reference,Reference: HORD1234567,NaN,Near-match: seven digits is longer than the published format
+OWN-13,extract_order_reference,XHORD001451,NaN,Near-match: embedded in a longer token
+OWN-14,extract_order_reference,ORDER-HORD001451,NaN,"Near-match: hyphen-attached, rejected the same way the SKU and promo rules reject it"
+OWN-15,extract_order_reference,HORD१२३४५६,NaN,Near-match: Devanagari digits are not the published ASCII format
+OWN-16,extract_product_sku,SKU: SKU-VEL00108-B,NaN,Near-match: a trailing hyphen extension is a longer token
+OWN-17,extract_product_sku,sku: sku-vel00108,SKU-VEL00108,Matched: lower-case input returns an upper-case SKU
+OWN-18,extract_product_sku,SKU-VEL१२३,NaN,Near-match: must not be truncated to the ASCII prefix
+OWN-19,extract_promo_code,PROMO: B6SAVE-24,NaN,Near-match: B6 is outside the published B1-B5 band
+OWN-20,extract_promo_code,PROMO: B3SAVE-243,NaN,Near-match: three digits is longer than the published format
+OWN-21,extract_promo_code,,NaN,Missing: empty string
+OWN-22,build_latin_analysis,ελληνικά text café,text café,"Multilingual: non-Latin letters removed, Latin diacritics kept"
+OWN-23,build_latin_analysis,ελληνικά,NaN,Multilingual: no Latin letter remains
+OWN-24,contains_non_latin_script,naïve café,False,Unmatched: a non-ASCII character is not automatically non-Latin
+OWN-25,contains_non_latin_script,很好 good,True,Multilingual: a letter outside the Latin script is present
+OWN-26,contains_non_latin_script,order 12345 - ok!,False,Unmatched: digits and punctuation cannot identify a script
+'''
+OWN_CASES = list(csv.DictReader(StringIO(OWN_CASES_CSV)))
+assert len(OWN_CASES) == 26, f'expected 26 student-designed cases, got {len(OWN_CASES)}'
+
+# Run the supplied public cases when the teaching file is available. It is not a
+# required submission asset, so its absence must not block a fresh notebook run.
+PUBLIC_CASE_CANDIDATES = [
     BASE_DIR / 'A1_public_text_test_cases.csv',
     BASE_DIR / 'templates' / 'A1_public_text_test_cases.csv',
-    BASE_DIR / f'{GROUP_ID}_own_text_test_cases.csv',
 ]
+public_path = next((path for path in PUBLIC_CASE_CANDIDATES if path.is_file()), None)
+public_cases = []
+if public_path is not None:
+    with open(public_path, newline='', encoding='utf-8') as fh:
+        public_cases = list(csv.DictReader(fh))
+else:
+    print('Public test CSV not present; student-designed cases still run below.')
 
 total = failed = 0
-for path in CASE_FILES:
-    if path.exists():
-        n, f = run_cases(path)
-        total, failed = total + n, failed + f
-assert total > 0, 'no test-case file found'
+if public_cases:
+    n, f = run_cases(public_cases, public_path.name)
+    total, failed = total + n, failed + f
+n, f = run_cases(OWN_CASES, f'{GROUP_ID} student-designed cases (embedded)')
+total, failed = total + n, failed + f
 assert failed == 0, f'{failed} text-function cases failed'
 print(f'\n{total} cases, {failed} failures')
 
